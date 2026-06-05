@@ -79,19 +79,19 @@
     </div>
 
     <script>
-        // กำหนดรายละเอียดล็อกอินให้ตรงตามสิทธิ์หน้าคลาวด์จริงของคุณ (captain-T)
+        // กำหนดรายละเอียดล็อกอินให้ถูกต้องตรงตามสิทธิ์หน้าคลาวด์จริงของคุณ (captain-T)
         const options = {
             connectTimeout: 5000,
             clientId: 'web_client_' + Math.random().toString(16).substr(2, 8),
             username: 'captain-T',                     
             password: 'Teerap@t_NN21',                  
-            path: '/mqtt',
-            // ⭐ จุดสำคัญที่เพิ่มเข้ามา: แจ้งเตือน HiveMQ ว่านี่คือการคุยผ่านโปรโตคอล MQTT บนพอร์ต 443
-            subprotocols: ['mqtt'] 
+            path: '/mqtt',               // พาธเชื่อมต่อสำหรับ WebSocket
+            port: 443,                   // ⭐ บังคับแยกพอร์ตออกมาตรงนี้เพื่อตัดปัญหา Browser รวบค่า URL
+            subprotocols: ['mqtt']       // แจ้งเตือนโปรโตคอลย่อยให้คลาวด์รับทราบ
         };
 
-        // เชื่อมโยงเข้าพอร์ตมาตรฐาน 443 เพื่อทะลุกำแพงความปลอดภัยของเบราว์เซอร์
-        const client = mqtt.connect('wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:443', options);
+        // เชื่อมต่อเข้าพอร์ตมาตรฐานคลาวด์โดยส่ง options แยกไปควบคุมพอร์ต 443 ด้านใน
+        const client = mqtt.connect('wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud', options);
 
         client.on('connect', () => {
             document.getElementById('connection-status').innerText = '🟢 เชื่อมต่อ Cloud สำเร็จ ระบบพร้อมทำงาน';
