@@ -79,18 +79,17 @@
     </div>
 
     <script>
-        // กำหนดรายละเอียดล็อกอินให้ถูกต้องตรงตามสิทธิ์หน้าคลาวด์จริงของคุณ (captain-T)
+        // ✅ แก้ไขป้ายคำสั่งซ้ำซ้อน และคงค่าสิทธิ์ล็อกอินพอร์ต 443 ที่ถูกต้องไว้เรียบร้อยครับ
         const options = {
-            const options = {
             connectTimeout: 5000,
             clientId: 'web_client_' + Math.random().toString(16).substr(2, 8),
-            username: 'captain-T',     // สะกดตรงตามสิทธิ์หน้าคลาวด์จริงของคุณ                  
+            username: 'captain-T',                  
             password: 'Teerap@t_NN21',                  
-            path: '/mqtt',             // ระบุพาธเชื่อมโยงย่อยของ WebSocket  
-            subprotocols: ['mqtt']     // ประกาศโปรโตคอลย่อยร่วมกับ HiveMQ พอร์ต 443
+            path: '/mqtt',             
+            subprotocols: ['mqtt']     
         };
 
-        // ⭐ จุดแก้ไขสำคัญ: ฝังเครื่องหมายพอร์ต :443 แนบติดเข้าไปใน URL หลักแบบนี้เลยครับ
+        // เชื่อมโยงเข้าพอร์ตความปลอดภัย 443 บังคับวิ่งผ่านเส้นทาง WebSocket สำเร็จ
         const client = mqtt.connect('wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:443/mqtt', options);
 
         client.on('connect', () => {
@@ -98,7 +97,6 @@
             document.getElementById('connection-status').style.color = '#28a745';
             console.log('Connected to HiveMQ Cloud successfully!');
             
-            // สมัครรับค่าหัวข้อจากบอร์ด ESP32
             client.subscribe('garden/sensor/#');
             client.subscribe('garden/valve/+/status');
             client.subscribe('garden/signal');
@@ -109,7 +107,6 @@
             document.getElementById('connection-status').style.color = '#dc3545';
         });
 
-        // จัดการอัปเดตข้อมูลบนหน้าจอเมื่อได้สัญญาณมาจากตัวบอร์ด
         client.on('message', (topic, message) => {
             const msgStr = message.toString();
             
