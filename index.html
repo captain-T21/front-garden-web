@@ -77,12 +77,12 @@
     </div>
 
     <script>
-        // กำหนดรายละเอียดล็อกอินให้ถูกต้องตามที่เราแก้ไขบนบอร์ดและหน้า HiveMQ Cloud
+        // กำหนดรายละเอียดล็อกอินให้ตรงกับสิทธิ์บนบอร์ดและหน้า HiveMQ Cloud ของคุณ
         const options = {
             connectTimeout: 4000,
             clientId: 'web_client_' + Math.random().toString(16).substr(2, 8),
-            username: 'captain-T',                     // แก้ไขให้ถูกต้องตรงกัน
-            password: 'Teerap@t_NN21',                  // แก้ไขให้ถูกต้องตรงกัน
+            username: 'captain-T',                     
+            password: 'Teerap@t_NN21',                  
         };
 
         // กำหนดออปชันพิเศษเปิดพาธอุโมงค์เพื่อให้เชื่อมโยงพอร์ตมาตรฐาน 443 ได้ราบรื่น
