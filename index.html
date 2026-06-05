@@ -86,7 +86,7 @@
         };
 
         // เชื่อมต่อผ่านโปรโตคอล Secure WebSockets (wss) ผ่านพอร์ต 8884
-        const client = mqtt.connect('wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:8884/mqtt', options);
+        const client = mqtt.connect('wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:443/mqtt', options);
 
         client.on('connect', () => {
             console.log('Connected to HiveMQ Cloud successfully!');
