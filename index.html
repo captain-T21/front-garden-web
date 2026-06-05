@@ -21,11 +21,13 @@
         .status-badge { font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 14px; }
         .status-on { background: #e2f6e7; color: #28a745; }
         .status-off { background: #fde8e9; color: #dc3545; }
+        #connection-status { font-weight: bold; color: #7f8c8d; text-align: center; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
     <h2>🌱 HOMEGUMTEE Web App</h2>
+    <div id="connection-status">🔄 กำลังเชื่อมต่อระบบ Cloud...</div>
     
     <div class="card">
         <h3>📊 Status รายงานค่าเซนเซอร์</h3>
@@ -77,46 +79,49 @@
     </div>
 
     <script>
-        // กำหนดรายละเอียดล็อกอินให้ตรงกับสิทธิ์บนบอร์ดและหน้า HiveMQ Cloud ของคุณ
+        // กำหนดรายละเอียดล็อกอินให้ถูกต้องตามสิทธิ์หน้าคลาวด์จริงของคุณ (captain-T)
         const options = {
-            connectTimeout: 4000,
+            connectTimeout: 5000,
             clientId: 'web_client_' + Math.random().toString(16).substr(2, 8),
             username: 'captain-T',                     
             password: 'Teerap@t_NN21',                  
+            path: '/mqtt' // พาธ WebSocket สำหรับเชื่อมต่อพอร์ต 443
         };
 
-        // กำหนดออปชันพิเศษเปิดพาธอุโมงค์เพื่อให้เชื่อมโยงพอร์ตมาตรฐาน 443 ได้ราบรื่น
-        options.path = '/mqtt';
-
-        // ปรับท่อการเชื่อมโยงให้วิ่งเข้าพอร์ต HTTPS มาตรฐาน (พอร์ต 443) ป้องกันเบราว์เซอร์ยุคใหม่ปิดกั้นการทำงาน
+        // เชื่อมต่อเข้าพอร์ต HTTPS 443 เพื่อแก้ปัญหา Mixed Content ไม่ให้เบราว์เซอร์บล็อกสัญญาณ
         const client = mqtt.connect('wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:443', options);
 
         client.on('connect', () => {
+            document.getElementById('connection-status').innerText = '🟢 เชื่อมต่อ Cloud สำเร็จ ระบบพร้อมทำงาน';
+            document.getElementById('connection-status').style.color = '#28a745';
             console.log('Connected to HiveMQ Cloud successfully!');
-            // สมัครรับค่าหัวข้อการรายงานข้อมูลทั้งหมดส่งตรงจากตัวบอร์ด ESP32
+            
+            // สมัครรับค่าจากบอร์ด ESP32
             client.subscribe('garden/sensor/#');
             client.subscribe('garden/valve/+/status');
             client.subscribe('garden/signal');
         });
 
-        // จัดการอัปเดตออบเจกต์การแสดงผลเมื่อระบบคลาวด์ส่งสัญญาณชุดข้อมูลเข้ามา
+        client.on('offline', () => {
+            document.getElementById('connection-status').innerText = '🔴 ขาดการเชื่อมต่อกับระบบ Cloud';
+            document.getElementById('connection-status').style.color = '#dc3545';
+        });
+
+        // จัดการอัปเดตข้อมูลบนหน้าจอเมื่อได้สัญญานมาจากตัวบอร์ด
         client.on('message', (topic, message) => {
             const msgStr = message.toString();
             
-            // ประมวลผลและกระจายข้อมูลรายงานจากเซนเซอร์ลงหน้าการแสดงผล
             if (topic === 'garden/sensor/temperature') document.getElementById('temp').innerText = msgStr;
             if (topic === 'garden/sensor/humidity') document.getElementById('hum').innerText = msgStr;
             if (topic === 'garden/sensor/soil_moisture') document.getElementById('soil').innerText = msgStr;
             if (topic === 'garden/signal') document.getElementById('signal').innerText = msgStr;
             
-            // ประมวลผลเปลี่ยนสีและข้อความของสถานะการทำงานของปุ่มเปิด-ปิดวาล์ว
             if (topic === 'garden/valve/1/status') updateValveUI('v1-status', msgStr);
             if (topic === 'garden/valve/2/status') updateValveUI('v2-status', msgStr);
             if (topic === 'garden/valve/3/status') updateValveUI('v3-status', msgStr);
             if (topic === 'garden/valve/4/status') updateValveUI('v4-status', msgStr);
         });
 
-        // ฟังก์ชันอัปเดตสีและ Badge แจ้งรายละเอียดสถานะการทำงานจริงบนเว็บแอปพลิเคชัน
         function updateValveUI(elementId, status) {
             const el = document.getElementById(elementId);
             if (status === '1') {
@@ -128,13 +133,12 @@
             }
         }
 
-        // ฟังก์ชันยิงข้อมูลและ Publish ชุดคำสั่งเพื่อส่งออกไปสั่งงานรีเลย์ฮาร์ดแวร์บอร์ด ESP32
         function sendCmd(topic, value) {
             if(client.connected) {
                 client.publish(topic, value, { qos: 1 });
                 console.log(`Sent command: ${topic} -> ${value}`);
             } else {
-                alert('ระบบไม่ได้เชื่อมต่ออยู่กับ Cloud เซิร์ฟเวอร์ MQTT กรุณารีเฟรชหน้าแอปใหม่อีกครั้ง');
+                alert('หน้าเว็บแอปพลิเคชันยังไม่ได้เชื่อมต่อกับระบบคลาวด์ กรุณารอสักครู่หรือรีเฟรชหน้าจอ');
             }
         }
     </script>
