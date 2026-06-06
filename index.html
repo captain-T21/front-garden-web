@@ -459,6 +459,47 @@
                 connectMQTT();
             }
         });
+        // แก้ไขฟังก์ชัน sendCmd ใน index.html:
+
+function sendCmd(topic, value) {
+    if (client && client.connected) {
+        // ✅ แก้ไข: อัปเดต UI ทันทีที่กด (optimistic update)
+        if (topic.startsWith('garden/valve/') && topic.endsWith('/set')) {
+            let valveNum = topic.match(/garden\/valve\/(\d+)\/set/)[1];
+            updateValveUI(`v${valveNum}-status`, value);
+            console.log(`🎯 UI updated immediately: Valve ${valveNum} -> ${value === '1' ? 'ON' : 'OFF'}`);
+        }
+        else if (topic === 'garden/all_valve/set') {
+            for(let i = 1; i <= 4; i++) {
+                updateValveUI(`v${i}-status`, value);
+            }
+            console.log(`🎯 UI updated: All valves -> ${value === '1' ? 'ON' : 'OFF'}`);
+        }
+        
+        // ส่งคำสั่งไปที่ ESP32
+        client.publish(topic, value, { qos: 1, retain: false });
+        console.log(`📤 Sent: ${topic} -> ${value}`);
+        showFeedback(`ส่งคำสั่ง ${value === '1' ? 'เปิด' : 'ปิด'} วาล์วเรียบร้อย ✓`);
+        
+        // ✅ สำคัญ: ขอสถานะล่าสุดจาก ESP32 อีกครั้งหลังจาก 0.5 วินาที
+        setTimeout(() => {
+            if (client && client.connected) {
+                // ขอสถานะปัจจุบันโดย publish คำสั่ง request (ถ้ามี)
+                if (topic.startsWith('garden/valve/') && topic.endsWith('/set')) {
+                    let valveNum = topic.match(/garden\/valve\/(\d+)\/set/)[1];
+                    client.publish(`garden/valve/${valveNum}/get`, '', { qos: 0 });
+                }
+            }
+        }, 500);
+        
+    } else {
+        console.error('MQTT not connected!');
+        showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT กรุณารอสักครู่', true);
+        if (!client || !client.connected) {
+            setTimeout(connectMQTT, 2000);
+        }
+    }
+}
     </script>
 </body>
 </html>
