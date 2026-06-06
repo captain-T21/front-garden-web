@@ -21,20 +21,33 @@
         .status-badge { font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 14px; }
         .status-on { background: #e2f6e7; color: #28a745; }
         .status-off { background: #fde8e9; color: #dc3545; }
-        #connection-status { font-weight: bold; color: #7f8c8d; text-align: center; margin-bottom: 10px; }
+        .connection-status { 
+            display: inline-block; 
+            padding: 5px 10px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .connected { background: #28a745; color: white; }
+        .disconnected { background: #dc3545; color: white; }
+        .connecting { background: #ffc107; color: #333; }
     </style>
 </head>
 <body>
 
     <h2>🌱 HOMEGUMTEE Web App</h2>
-    <div id="connection-status">🔄 กำลังเชื่อมต่อระบบ Cloud...</div>
+    <div style="text-align: center;">
+        <span id="conn-status" class="connection-status connecting">🔄 กำลังเชื่อมต่อ...</span>
+    </div>
     
     <div class="card">
         <h3>📊 Status รายงานค่าเซนเซอร์</h3>
         <p>อุณหภูมิ: <span class="sensor-val"><span id="temp">--</span> °C</span></p>
         <p>ความชื้นอากาศ: <span class="sensor-val"><span id="hum">--</span> %</span></p>
-        <p>ความชื้นดิน: <span class="sensor-val"><span id="soil">--</span></span></p>
+        <p>ความชื้นดิน: <span class="sensor-val"><span id="soil">--</span> %</span></p>
         <p>สัญญาณ WiFi: <span class="sensor-val"><span id="signal">--</span> %</span></p>
+        <p>เวลาทำงานสูงสุด: <span class="sensor-val"><span id="max_time">--</span> นาที</span></p>
     </div>
 
     <div class="card">
@@ -78,51 +91,132 @@
         </div>
     </div>
 
+    <div class="card">
+        <h3>⏰ ตั้งเวลาทำงานสูงสุด</h3>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="number" id="max_working_minutes" min="1" max="1440" value="8" style="flex:1; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+            <button onclick="setMaxWorkingTime()" style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 6px;">ตั้งค่า</button>
+        </div>
+        <p style="font-size: 12px; color: #666; margin-top: 8px;">* ตั้งค่านาทีสูงสุดที่วาล์วทำงานได้ (1-1440 นาที)</p>
+    </div>
+
     <script>
+        let reconnectAttempts = 0;
+        let client = null;
+        
+        // กำหนดรายละเอียดล็อกอินให้ถูกต้อง
         const options = {
-            connectTimeout: 5000,
+            connectTimeout: 10000,
             clientId: 'web_client_' + Math.random().toString(16).substr(2, 8),
-            username: 'captain-T',                  
-            password: 'Teerap@t_NN21',                  
-            path: '/mqtt',             
-            subprotocols: ['mqtt']     
+            username: 'captain-T',
+            password: 'Teerap@t_NN21',
+            clean: true,
+            reconnectPeriod: 5000,
+            keepalive: 60
         };
 
-        // 🟢 ปรับวิธีต่อ URL ให้กระชับ ล็อกเป้าพอร์ต 443 เพื่อทะลุกำแพงเบราว์เซอร์
-        const client = mqtt.connect('wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:443', options);
+        function updateConnectionStatus(status, message) {
+            const el = document.getElementById('conn-status');
+            el.textContent = message;
+            el.className = 'connection-status ' + status;
+        }
 
-        client.on('connect', () => {
-            document.getElementById('connection-status').innerText = '🟢 เชื่อมต่อ Cloud สำเร็จ ระบบพร้อมทำงาน';
-            document.getElementById('connection-status').style.color = '#28a745';
-            console.log('Connected to HiveMQ Cloud successfully!');
+        function connectMQTT() {
+            updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อ MQTT...');
             
-            client.subscribe('garden/sensor/#');
-            client.subscribe('garden/valve/+/status');
-            client.subscribe('garden/signal');
-        });
-
-        client.on('offline', () => {
-            document.getElementById('connection-status').innerText = '🔴 ขาดการเชื่อมต่อกับระบบ Cloud';
-            document.getElementById('connection-status').style.color = '#dc3545';
-        });
-
-        client.on('message', (topic, message) => {
-            const msgStr = message.toString();
+            // ใช้ WebSocket over TLS (wss) สำหรับ HiveMQ Cloud
+            const brokerUrl = 'wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:8884/mqtt';
             
-            if (topic === 'garden/sensor/temperature') document.getElementById('temp').innerText = msgStr;
-            if (topic === 'garden/sensor/humidity') document.getElementById('hum').innerText = msgStr;
-            if (topic === 'garden/sensor/soil_moisture') document.getElementById('soil').innerText = msgStr;
-            if (topic === 'garden/signal') document.getElementById('signal').innerText = msgStr;
+            console.log('Connecting to MQTT broker:', brokerUrl);
             
-            if (topic === 'garden/valve/1/status') updateValveUI('v1-status', msgStr);
-            if (topic === 'garden/valve/2/status') updateValveUI('v2-status', msgStr);
-            if (topic === 'garden/valve/3/status') updateValveUI('v3-status', msgStr);
-            if (topic === 'garden/valve/4/status') updateValveUI('v4-status', msgStr);
-        });
+            client = mqtt.connect(brokerUrl, options);
 
+            client.on('connect', () => {
+                console.log('✅ Connected to HiveMQ Cloud successfully!');
+                updateConnectionStatus('connected', '✅ เชื่อมต่อแล้ว');
+                reconnectAttempts = 0;
+                
+                // Subscribe to all needed topics
+                client.subscribe('garden/sensor/temperature', { qos: 1 });
+                client.subscribe('garden/sensor/humidity', { qos: 1 });
+                client.subscribe('garden/sensor/soil_moisture', { qos: 1 });
+                client.subscribe('garden/signal', { qos: 1 });
+                client.subscribe('garden/max_working_time', { qos: 1 });
+                client.subscribe('garden/valve/+/status', { qos: 1 });
+                client.subscribe('garden/all_valve/status', { qos: 1 });
+                
+                console.log('Subscribed to all topics');
+                
+                // Request current status by publishing a dummy message
+                setTimeout(() => {
+                    console.log('Requesting current status...');
+                }, 500);
+            });
+
+            client.on('error', (err) => {
+                console.error('MQTT Error:', err);
+                updateConnectionStatus('disconnected', '❌ เชื่อมต่อผิดพลาด');
+            });
+
+            client.on('reconnect', () => {
+                console.log('Reconnecting to MQTT...');
+                updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อใหม่...');
+            });
+
+            client.on('close', () => {
+                console.log('MQTT connection closed');
+                updateConnectionStatus('disconnected', '❌ ตัดการเชื่อมต่อ');
+            });
+
+            client.on('message', (topic, message) => {
+                const msgStr = message.toString();
+                console.log(`📩 Received: ${topic} = ${msgStr}`);
+                
+                // Process sensor data
+                if (topic === 'garden/sensor/temperature') {
+                    document.getElementById('temp').innerText = msgStr;
+                }
+                else if (topic === 'garden/sensor/humidity') {
+                    document.getElementById('hum').innerText = msgStr;
+                }
+                else if (topic === 'garden/sensor/soil_moisture') {
+                    let soilValue = parseInt(msgStr);
+                    let soilPercent = Math.floor(soilValue / 1023 * 100);
+                    document.getElementById('soil').innerHTML = `${soilPercent}% (${soilValue})`;
+                }
+                else if (topic === 'garden/signal') {
+                    document.getElementById('signal').innerText = msgStr;
+                }
+                else if (topic === 'garden/max_working_time') {
+                    document.getElementById('max_time').innerText = msgStr;
+                    document.getElementById('max_working_minutes').value = msgStr;
+                }
+                else if (topic === 'garden/valve/1/status') {
+                    updateValveUI('v1-status', msgStr);
+                }
+                else if (topic === 'garden/valve/2/status') {
+                    updateValveUI('v2-status', msgStr);
+                }
+                else if (topic === 'garden/valve/3/status') {
+                    updateValveUI('v3-status', msgStr);
+                }
+                else if (topic === 'garden/valve/4/status') {
+                    updateValveUI('v4-status', msgStr);
+                }
+                else if (topic === 'garden/all_valve/status') {
+                    // Update all valves based on all_valve status
+                    let allStatus = msgStr === '1';
+                    for(let i = 1; i <= 4; i++) {
+                        updateValveUI(`v${i}-status`, msgStr);
+                    }
+                }
+            });
+        }
+
+        // ฟังก์ชันอัปเดตสีและ Badge แจ้งรายละเอียดสถานะการทำงาน
         function updateValveUI(elementId, status) {
             const el = document.getElementById(elementId);
-            if (status === '1') {
+            if (status === '1' || status === 1) {
                 el.innerText = '🟢 เปิด';
                 el.className = 'status-badge status-on';
             } else {
@@ -131,14 +225,54 @@
             }
         }
 
+        // ฟังก์ชันส่งคำสั่ง
         function sendCmd(topic, value) {
-            if(client.connected) {
-                client.publish(topic, value, { qos: 1 });
-                console.log(`Sent command: ${topic} -> ${value}`);
+            if(client && client.connected) {
+                client.publish(topic, value, { qos: 1, retain: false });
+                console.log(`📤 Sent command: ${topic} -> ${value}`);
+                // แสดง feedback สั้นๆ
+                showFeedback('ส่งคำสั่งเรียบร้อย');
             } else {
-                alert('หน้าเว็บแอปพลิเคชันยังไม่ได้เชื่อมต่อกับระบบคลาวด์ กรุณารอสักครู่หรือรีเฟรชหน้าจอ');
+                console.error('MQTT not connected!');
+                alert('❌ ระบบไม่ได้เชื่อมต่อกับ MQTT Broker กรุณารอสักครู่หรือรีเฟรชหน้าเว็บ');
+                // พยายามเชื่อมต่อใหม่
+                if(!client || !client.connected) {
+                    connectMQTT();
+                }
             }
         }
+
+        function setMaxWorkingTime() {
+            let minutes = parseInt(document.getElementById('max_working_minutes').value);
+            if(isNaN(minutes)) minutes = 8;
+            if(minutes < 1) minutes = 1;
+            if(minutes > 1440) minutes = 1440;
+            
+            sendCmd('garden/max_working_time/set', minutes.toString());
+            showFeedback(`ตั้งเวลาใช้งานสูงสุด ${minutes} นาที`);
+        }
+
+        function showFeedback(msg) {
+            let feedback = document.createElement('div');
+            feedback.textContent = msg;
+            feedback.style.position = 'fixed';
+            feedback.style.bottom = '20px';
+            feedback.style.left = '50%';
+            feedback.style.transform = 'translateX(-50%)';
+            feedback.style.backgroundColor = '#28a745';
+            feedback.style.color = 'white';
+            feedback.style.padding = '10px 20px';
+            feedback.style.borderRadius = '8px';
+            feedback.style.zIndex = '1000';
+            feedback.style.fontSize = '14px';
+            document.body.appendChild(feedback);
+            setTimeout(() => feedback.remove(), 2000);
+        }
+
+        // เริ่มต้นการเชื่อมต่อเมื่อโหลดหน้าเว็บ
+        window.addEventListener('load', () => {
+            connectMQTT();
+        });
     </script>
 </body>
 </html>
