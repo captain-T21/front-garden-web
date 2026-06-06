@@ -166,6 +166,12 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
         .connecting {
             animation: pulse 1.5s infinite;
         }
@@ -222,7 +228,7 @@
             </div>
 
             <div class="valve-row">
-                <span>💧 วาล์ว 4 (สวน屋顶): <span id="v4-status" class="status-badge status-off">🔴 ปิด</span></span>
+                <span>💧 วาล์ว 4 (สวนดาดฟ้า): <span id="v4-status" class="status-badge status-off">🔴 ปิด</span></span>
                 <div>
                     <button class="btn-on" onclick="sendCmd('garden/valve/4/set', '1')">▶ เปิด</button>
                     <button class="btn-off" onclick="sendCmd('garden/valve/4/set', '0')">⏹ ปิด</button>
@@ -253,7 +259,7 @@
 
     <script>
         let client = null;
-        let reconnectAttempts = 0;
+        let reconnectCount = 0;
         
         function updateConnectionStatus(status, message) {
             const el = document.getElementById('conn-status');
@@ -285,26 +291,93 @@
             }, 2000);
         }
 
-        // เพิ่ม CSS animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeInOut {
-                0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
-                15% { opacity: 1; transform: translateX(-50%) translateY(0); }
-                85% { opacity: 1; transform: translateX(-50%) translateY(0); }
-                100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        function updateValveUI(elementId, status) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            
+            if (status === '1' || status === 1) {
+                el.innerHTML = '🟢 เปิด';
+                el.className = 'status-badge status-on';
+            } else {
+                el.innerHTML = '🔴 ปิด';
+                el.className = 'status-badge status-off';
             }
-        `;
-        document.head.appendChild(style);
+        }
+
+        function requestValveStatus(valveNum) {
+            if (client && client.connected) {
+                client.publish(`garden/valve/${valveNum}/get`, '', { qos: 0 });
+                console.log(`📡 Requested status for valve ${valveNum}`);
+            }
+        }
+
+        function sendCmd(topic, value) {
+            if (client && client.connected) {
+                // ✅ อัปเดต UI ทันที (optimistic update)
+                if (topic === 'garden/all_valve/set') {
+                    for(let i = 1; i <= 4; i++) {
+                        updateValveUI(`v${i}-status`, value);
+                    }
+                    console.log(`🎯 UI updated: All valves -> ${value === '1' ? 'ON' : 'OFF'}`);
+                } else if (topic.includes('/set')) {
+                    let match = topic.match(/garden\/valve\/(\d+)\/set/);
+                    if (match) {
+                        updateValveUI(`v${match[1]}-status`, value);
+                        console.log(`🎯 UI updated immediately: Valve ${match[1]} -> ${value === '1' ? 'ON' : 'OFF'}`);
+                    }
+                }
+                
+                // ส่งคำสั่งไปที่ ESP32
+                client.publish(topic, value, { qos: 1, retain: false });
+                console.log(`📤 Sent: ${topic} -> ${value}`);
+                showFeedback(`ส่งคำสั่ง ${value === '1' ? 'เปิด' : 'ปิด'} วาล์ว ✓`);
+                
+                // ✅ ขอสถานะจริงจาก ESP32 หลังจาก 0.5 วินาที
+                setTimeout(() => {
+                    if (client && client.connected) {
+                        if (topic === 'garden/all_valve/set') {
+                            for(let i = 1; i <= 4; i++) {
+                                requestValveStatus(i);
+                            }
+                        } else if (topic.includes('/set')) {
+                            let match = topic.match(/garden\/valve\/(\d+)\/set/);
+                            if (match) {
+                                requestValveStatus(match[1]);
+                            }
+                        }
+                    }
+                }, 500);
+                
+            } else {
+                console.error('MQTT not connected!');
+                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT กรุณารอสักครู่', true);
+                if (!client || !client.connected) {
+                    setTimeout(connectMQTT, 2000);
+                }
+            }
+        }
+
+        function setMaxWorkingTime() {
+            let minutes = parseInt(document.getElementById('max_working_minutes').value);
+            if (isNaN(minutes)) minutes = 8;
+            minutes = Math.min(1440, Math.max(1, minutes));
+            
+            sendCmd('garden/max_working_time/set', minutes.toString());
+            showFeedback(`ตั้งเวลาใช้งานสูงสุด ${minutes} นาที ✓`);
+        }
 
         function connectMQTT() {
-            updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อ MQTT Broker...');
+            if (reconnectCount >= 10) {
+                updateConnectionStatus('disconnected', '❌ เชื่อมต่อไม่สำเร็จ กรุณารีเฟรช');
+                return;
+            }
             
-            // การเชื่อมต่อ WebSocket ไปยัง HiveMQ Cloud
+            updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อ MQTT...');
+            
             const brokerUrl = 'wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:8884/mqtt';
             
             const options = {
-                connectTimeout: 10000,
+                connectTimeout: 15000,
                 clientId: 'web_' + Math.random().toString(36).substr(2, 10),
                 username: 'captain-T',
                 password: 'Teerap@t_NN21',
@@ -315,17 +388,28 @@
                 path: '/mqtt'
             };
             
-            console.log('🔌 Connecting to:', brokerUrl);
+            if (client) {
+                try { client.end(true); } catch(e) {}
+            }
             
             client = mqtt.connect(brokerUrl, options);
-
+            
+            let connectionTimer = setTimeout(() => {
+                if (client && !client.connected) {
+                    console.log('Connection timeout, retrying...');
+                    client.end(true);
+                    reconnectCount++;
+                    connectMQTT();
+                }
+            }, 12000);
+            
             client.on('connect', () => {
+                clearTimeout(connectionTimer);
                 console.log('✅ Connected to HiveMQ Cloud!');
                 updateConnectionStatus('connected', '✅ เชื่อมต่อสำเร็จ');
-                reconnectAttempts = 0;
+                reconnectCount = 0;
                 showFeedback('เชื่อมต่อ MQTT สำเร็จ ✓');
                 
-                // Subscribe topics
                 const topics = [
                     'garden/sensor/temperature',
                     'garden/sensor/humidity',
@@ -337,49 +421,50 @@
                 ];
                 
                 topics.forEach(topic => {
-                    client.subscribe(topic, { qos: 1 }, (err) => {
+                    client.subscribe(topic, { qos: 0 }, (err) => {
                         if (err) console.error('Subscribe error:', topic, err);
                         else console.log('Subscribed to:', topic);
                     });
                 });
                 
-                // Request initial data
+                // ขอสถานะปัจจุบันทั้งหมด
                 setTimeout(() => {
-                    console.log('📡 Requesting initial data...');
-                }, 500);
+                    for(let i = 1; i <= 4; i++) {
+                        requestValveStatus(i);
+                    }
+                }, 1000);
             });
-
+            
             client.on('error', (err) => {
-                console.error('❌ MQTT Error:', err);
+                clearTimeout(connectionTimer);
+                console.error('❌ MQTT Error:', err.message);
                 updateConnectionStatus('disconnected', '❌ เชื่อมต่อล้มเหลว');
-                showFeedback('เชื่อมต่อ MQTT ล้มเหลว!', true);
             });
-
-            client.on('reconnect', () => {
-                console.log('🔄 Reconnecting to MQTT...');
-                updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อใหม่...');
-            });
-
+            
             client.on('close', () => {
                 console.log('🔌 MQTT connection closed');
-                updateConnectionStatus('disconnected', '❌ ตัดการเชื่อมต่อ');
+                updateConnectionStatus('connecting', '🔄 ตัดเชื่อมต่อ กำลังเชื่อมต่อใหม่...');
             });
-
+            
             client.on('message', (topic, message) => {
                 const msgStr = message.toString();
                 console.log(`📩 Received: ${topic} = ${msgStr}`);
                 
-                // Update UI based on topic
                 switch(topic) {
                     case 'garden/sensor/temperature':
-                        document.getElementById('temp').innerText = parseFloat(msgStr).toFixed(1);
+                        let temp = parseFloat(msgStr);
+                        if (!isNaN(temp)) document.getElementById('temp').innerText = temp.toFixed(1);
                         break;
                     case 'garden/sensor/humidity':
-                        document.getElementById('hum').innerText = parseFloat(msgStr).toFixed(1);
+                        let hum = parseFloat(msgStr);
+                        if (!isNaN(hum)) document.getElementById('hum').innerText = hum.toFixed(1);
                         break;
                     case 'garden/sensor/soil_moisture':
                         let soilVal = parseInt(msgStr);
-                        let soilPercent = Math.floor(soilVal / 1023 * 100);
+                        if (isNaN(soilVal)) soilVal = 0;
+                        if (soilVal < 0) soilVal = 0;
+                        let soilPercent = Math.floor(soilVal / 4095 * 100);
+                        if (soilPercent > 100) soilPercent = 100;
                         document.getElementById('soil').innerHTML = `${soilPercent}% (${soilVal})`;
                         break;
                     case 'garden/signal':
@@ -410,96 +495,16 @@
             });
         }
 
-        function updateValveUI(elementId, status) {
-            const el = document.getElementById(elementId);
-            if (!el) return;
-            
-            if (status === '1' || status === 1) {
-                el.innerHTML = '🟢 เปิด';
-                el.className = 'status-badge status-on';
-            } else {
-                el.innerHTML = '🔴 ปิด';
-                el.className = 'status-badge status-off';
-            }
-        }
-
-        function sendCmd(topic, value) {
-            if (client && client.connected) {
-                client.publish(topic, value, { qos: 1, retain: false });
-                console.log(`📤 Sent: ${topic} -> ${value}`);
-                showFeedback(`ส่งคำสั่ง ${value === '1' ? 'เปิด' : 'ปิด'} วาล์วเรียบร้อย ✓`);
-            } else {
-                console.error('MQTT not connected!');
-                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT กรุณารอสักครู่', true);
-                // Auto reconnect
-                if (!client || !client.connected) {
-                    setTimeout(connectMQTT, 2000);
-                }
-            }
-        }
-
-        function setMaxWorkingTime() {
-            let minutes = parseInt(document.getElementById('max_working_minutes').value);
-            if (isNaN(minutes)) minutes = 8;
-            minutes = Math.min(1440, Math.max(1, minutes));
-            
-            sendCmd('garden/max_working_time/set', minutes.toString());
-            showFeedback(`ตั้งเวลาใช้งานสูงสุด ${minutes} นาที ✓`);
-        }
-
-        // Auto connect on page load
         window.addEventListener('load', () => {
             connectMQTT();
         });
         
-        // Handle page visibility
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && (!client || !client.connected)) {
                 console.log('Page visible, reconnecting...');
                 connectMQTT();
             }
         });
-        // แก้ไขฟังก์ชัน sendCmd ใน index.html:
-
-function sendCmd(topic, value) {
-    if (client && client.connected) {
-        // ✅ แก้ไข: อัปเดต UI ทันทีที่กด (optimistic update)
-        if (topic.startsWith('garden/valve/') && topic.endsWith('/set')) {
-            let valveNum = topic.match(/garden\/valve\/(\d+)\/set/)[1];
-            updateValveUI(`v${valveNum}-status`, value);
-            console.log(`🎯 UI updated immediately: Valve ${valveNum} -> ${value === '1' ? 'ON' : 'OFF'}`);
-        }
-        else if (topic === 'garden/all_valve/set') {
-            for(let i = 1; i <= 4; i++) {
-                updateValveUI(`v${i}-status`, value);
-            }
-            console.log(`🎯 UI updated: All valves -> ${value === '1' ? 'ON' : 'OFF'}`);
-        }
-        
-        // ส่งคำสั่งไปที่ ESP32
-        client.publish(topic, value, { qos: 1, retain: false });
-        console.log(`📤 Sent: ${topic} -> ${value}`);
-        showFeedback(`ส่งคำสั่ง ${value === '1' ? 'เปิด' : 'ปิด'} วาล์วเรียบร้อย ✓`);
-        
-        // ✅ สำคัญ: ขอสถานะล่าสุดจาก ESP32 อีกครั้งหลังจาก 0.5 วินาที
-        setTimeout(() => {
-            if (client && client.connected) {
-                // ขอสถานะปัจจุบันโดย publish คำสั่ง request (ถ้ามี)
-                if (topic.startsWith('garden/valve/') && topic.endsWith('/set')) {
-                    let valveNum = topic.match(/garden\/valve\/(\d+)\/set/)[1];
-                    client.publish(`garden/valve/${valveNum}/get`, '', { qos: 0 });
-                }
-            }
-        }, 500);
-        
-    } else {
-        console.error('MQTT not connected!');
-        showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT กรุณารอสักครู่', true);
-        if (!client || !client.connected) {
-            setTimeout(connectMQTT, 2000);
-        }
-    }
-}
     </script>
 </body>
 </html>
