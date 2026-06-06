@@ -2,169 +2,366 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HOMEGUMTEE Web Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>HOMEGUMTEE Web Control - ระบบรดน้ำอัจฉริยะ</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #f0f4f8; padding: 20px; color: #333; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); max-width: 400px; margin: 15px auto; text-align: left; }
-        h2, h3 { text-align: center; color: #2c3e50; }
-        .valve-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .valve-row:last-child { border: none; }
-        button { padding: 8px 16px; font-size: 14px; margin-left: 5px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        button:hover { opacity: 0.9; }
-        .btn-on { background-color: #28a745; color: white; }
-        .btn-off { background-color: #dc3545; color: white; }
-        .btn-all-on { background-color: #007bff; color: white; width: 48%; padding: 12px; font-size: 16px; }
-        .btn-all-off { background-color: #6c757d; color: white; width: 48%; padding: 12px; font-size: 16px; }
-        .sensor-val { font-size: 20px; color: #0056b3; font-weight: bold; float: right; }
-        .status-badge { font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 14px; }
-        .status-on { background: #e2f6e7; color: #28a745; }
-        .status-off { background: #fde8e9; color: #dc3545; }
+        * {
+            box-sizing: border-box;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px; 
+            color: #333; 
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+            margin: 15px auto; 
+            text-align: left; 
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+        }
+        h2 { 
+            text-align: center; 
+            color: white; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+        h3 { 
+            text-align: center; 
+            color: #2c3e50; 
+            margin-top: 0;
+            border-bottom: 2px solid #667eea;
+            display: inline-block;
+            padding-bottom: 5px;
+        }
+        .valve-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 12px 0; 
+            border-bottom: 1px solid #eee; 
+        }
+        .valve-row:last-child { 
+            border: none; 
+        }
+        button { 
+            padding: 8px 20px; 
+            font-size: 14px; 
+            margin-left: 8px; 
+            border-radius: 8px; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: bold; 
+            transition: all 0.2s; 
+        }
+        button:hover { 
+            opacity: 0.85; 
+            transform: scale(0.98);
+        }
+        .btn-on { 
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white; 
+            box-shadow: 0 2px 5px rgba(40,167,69,0.3);
+        }
+        .btn-off { 
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            box-shadow: 0 2px 5px rgba(220,53,69,0.3);
+        }
+        .btn-all-on { 
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white; 
+            width: 48%; 
+            padding: 12px; 
+            font-size: 16px; 
+        }
+        .btn-all-off { 
+            background: linear-gradient(135deg, #6c757d, #545b62);
+            color: white; 
+            width: 48%; 
+            padding: 12px; 
+            font-size: 16px; 
+        }
+        .sensor-val { 
+            font-size: 22px; 
+            color: #667eea; 
+            font-weight: bold; 
+            float: right; 
+        }
+        .status-badge { 
+            font-weight: bold; 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-size: 13px; 
+            display: inline-block;
+        }
+        .status-on { 
+            background: #d4edda; 
+            color: #155724; 
+        }
+        .status-off { 
+            background: #f8d7da; 
+            color: #721c24; 
+        }
         .connection-status { 
             display: inline-block; 
-            padding: 5px 10px; 
-            border-radius: 20px; 
-            font-size: 12px; 
+            padding: 6px 15px; 
+            border-radius: 25px; 
+            font-size: 13px; 
             font-weight: bold;
             margin-bottom: 10px;
         }
-        .connected { background: #28a745; color: white; }
-        .disconnected { background: #dc3545; color: white; }
-        .connecting { background: #ffc107; color: #333; }
+        .connected { 
+            background: #28a745; 
+            color: white; 
+            box-shadow: 0 2px 10px rgba(40,167,69,0.3);
+        }
+        .disconnected { 
+            background: #dc3545; 
+            color: white; 
+        }
+        .connecting { 
+            background: #ffc107; 
+            color: #333; 
+        }
+        .time-control {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .time-control input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+        .time-control button {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+            padding: 10px 20px;
+            margin: 0;
+        }
+        .info-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            text-align: center;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .connecting {
+            animation: pulse 1.5s infinite;
+        }
+        .footer {
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            margin-top: 20px;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
-
-    <h2>🌱 HOMEGUMTEE Web App</h2>
-    <div style="text-align: center;">
-        <span id="conn-status" class="connection-status connecting">🔄 กำลังเชื่อมต่อ...</span>
-    </div>
-    
-    <div class="card">
-        <h3>📊 Status รายงานค่าเซนเซอร์</h3>
-        <p>อุณหภูมิ: <span class="sensor-val"><span id="temp">--</span> °C</span></p>
-        <p>ความชื้นอากาศ: <span class="sensor-val"><span id="hum">--</span> %</span></p>
-        <p>ความชื้นดิน: <span class="sensor-val"><span id="soil">--</span> %</span></p>
-        <p>สัญญาณ WiFi: <span class="sensor-val"><span id="signal">--</span> %</span></p>
-        <p>เวลาทำงานสูงสุด: <span class="sensor-val"><span id="max_time">--</span> นาที</span></p>
-    </div>
-
-    <div class="card">
-        <h3>🔌 ควบคุมวาล์วระบบสวน</h3>
-        
-        <div class="valve-row">
-            <span>วาล์ว 1: <span id="v1-status" class="status-badge status-off">🔴 ปิด</span></span>
-            <div>
-                <button class="btn-on" onclick="sendCmd('garden/valve/1/set', '1')">เปิด</button>
-                <button class="btn-off" onclick="sendCmd('garden/valve/1/set', '0')">ปิด</button>
-            </div>
+    <div class="container">
+        <h2>🌱 HOMEGUMTEE Smart Garden</h2>
+        <div style="text-align: center;">
+            <span id="conn-status" class="connection-status connecting">🔄 กำลังเชื่อมต่อ MQTT...</span>
         </div>
         
-        <div class="valve-row">
-            <span>วาล์ว 2: <span id="v2-status" class="status-badge status-off">🔴 ปิด</span></span>
-            <div>
-                <button class="btn-on" onclick="sendCmd('garden/valve/2/set', '1')">เปิด</button>
-                <button class="btn-off" onclick="sendCmd('garden/valve/2/set', '0')">ปิด</button>
+        <div class="card">
+            <h3>📊 ค่าเซนเซอร์แบบ Real-time</h3>
+            <p>🌡️ อุณหภูมิ: <span class="sensor-val"><span id="temp">--</span> °C</span></p>
+            <p>💧 ความชื้นอากาศ: <span class="sensor-val"><span id="hum">--</span> %</span></p>
+            <p>🌍 ความชื้นดิน: <span class="sensor-val"><span id="soil">--</span> %</span></p>
+            <p>📶 สัญญาณ WiFi: <span class="sensor-val"><span id="signal">--</span> %</span></p>
+            <p>⏱️ เวลาทำงานสูงสุด: <span class="sensor-val"><span id="max_time">--</span> นาที</span></p>
+        </div>
+
+        <div class="card">
+            <h3>🔌 ควบคุมวาล์วน้ำ</h3>
+            
+            <div class="valve-row">
+                <span>💧 วาล์ว 1 (สวนหน้า): <span id="v1-status" class="status-badge status-off">🔴 ปิด</span></span>
+                <div>
+                    <button class="btn-on" onclick="sendCmd('garden/valve/1/set', '1')">▶ เปิด</button>
+                    <button class="btn-off" onclick="sendCmd('garden/valve/1/set', '0')">⏹ ปิด</button>
+                </div>
+            </div>
+            
+            <div class="valve-row">
+                <span>💧 วาล์ว 2 (สวนข้าง): <span id="v2-status" class="status-badge status-off">🔴 ปิด</span></span>
+                <div>
+                    <button class="btn-on" onclick="sendCmd('garden/valve/2/set', '1')">▶ เปิด</button>
+                    <button class="btn-off" onclick="sendCmd('garden/valve/2/set', '0')">⏹ ปิด</button>
+                </div>
+            </div>
+
+            <div class="valve-row">
+                <span>💧 วาล์ว 3 (สวนหลัง): <span id="v3-status" class="status-badge status-off">🔴 ปิด</span></span>
+                <div>
+                    <button class="btn-on" onclick="sendCmd('garden/valve/3/set', '1')">▶ เปิด</button>
+                    <button class="btn-off" onclick="sendCmd('garden/valve/3/set', '0')">⏹ ปิด</button>
+                </div>
+            </div>
+
+            <div class="valve-row">
+                <span>💧 วาล์ว 4 (สวน屋顶): <span id="v4-status" class="status-badge status-off">🔴 ปิด</span></span>
+                <div>
+                    <button class="btn-on" onclick="sendCmd('garden/valve/4/set', '1')">▶ เปิด</button>
+                    <button class="btn-off" onclick="sendCmd('garden/valve/4/set', '0')">⏹ ปิด</button>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-top: 20px; gap: 10px;">
+                <button class="btn-all-on" onclick="sendCmd('garden/all_valve/set', '1')">✅ เปิดทั้งหมด</button>
+                <button class="btn-all-off" onclick="sendCmd('garden/all_valve/set', '0')">❌ ปิดทั้งหมด</button>
             </div>
         </div>
 
-        <div class="valve-row">
-            <span>วาล์ว 3: <span id="v3-status" class="status-badge status-off">🔴 ปิด</span></span>
-            <div>
-                <button class="btn-on" onclick="sendCmd('garden/valve/3/set', '1')">เปิด</button>
-                <button class="btn-off" onclick="sendCmd('garden/valve/3/set', '0')">ปิด</button>
+        <div class="card">
+            <h3>⚙️ ตั้งค่าเวลาทำงานสูงสุด</h3>
+            <div class="time-control">
+                <input type="number" id="max_working_minutes" min="1" max="1440" value="8" step="1">
+                <button onclick="setMaxWorkingTime()">💾 บันทึกการตั้งค่า</button>
             </div>
-        </div>
-
-        <div class="valve-row">
-            <span>วาล์ว 4: <span id="v4-status" class="status-badge status-off">🔴 ปิด</span></span>
-            <div>
-                <button class="btn-on" onclick="sendCmd('garden/valve/4/set', '1')">เปิด</button>
-                <button class="btn-off" onclick="sendCmd('garden/valve/4/set', '0')">ปิด</button>
+            <div class="info-text">
+                * ตั้งค่านาทีสูงสุดที่วาล์วทำงานได้ (1-1440 นาที)<br>
+                * เมื่อครบเวลาที่ตั้งไว้ วาล์วจะปิดอัตโนมัติ
             </div>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-            <button class="btn-all-on" onclick="sendCmd('garden/all_valve/set', '1')">เปิดทั้งหมด</button>
-            <button class="btn-all-off" onclick="sendCmd('garden/all_valve/set', '0')">ปิดทั้งหมด</button>
         </div>
     </div>
-
-    <div class="card">
-        <h3>⏰ ตั้งเวลาทำงานสูงสุด</h3>
-        <div style="display: flex; gap: 10px; align-items: center;">
-            <input type="number" id="max_working_minutes" min="1" max="1440" value="8" style="flex:1; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
-            <button onclick="setMaxWorkingTime()" style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 6px;">ตั้งค่า</button>
-        </div>
-        <p style="font-size: 12px; color: #666; margin-top: 8px;">* ตั้งค่านาทีสูงสุดที่วาล์วทำงานได้ (1-1440 นาที)</p>
+    <div class="footer">
+        HOMEGUMTEE Smart Garden System | MQTT Real-time Control
     </div>
 
     <script>
-        let reconnectAttempts = 0;
         let client = null;
+        let reconnectAttempts = 0;
         
-        // กำหนดรายละเอียดล็อกอินให้ถูกต้อง
-        const options = {
-            connectTimeout: 10000,
-            clientId: 'web_client_' + Math.random().toString(16).substr(2, 8),
-            username: 'captain-T',
-            password: 'Teerap@t_NN21',
-            clean: true,
-            reconnectPeriod: 5000,
-            keepalive: 60
-        };
-
         function updateConnectionStatus(status, message) {
             const el = document.getElementById('conn-status');
-            el.textContent = message;
-            el.className = 'connection-status ' + status;
+            if (el) {
+                el.textContent = message;
+                el.className = 'connection-status ' + status;
+            }
         }
 
+        function showFeedback(msg, isError = false) {
+            let feedback = document.createElement('div');
+            feedback.textContent = msg;
+            feedback.style.position = 'fixed';
+            feedback.style.bottom = '20px';
+            feedback.style.left = '50%';
+            feedback.style.transform = 'translateX(-50%)';
+            feedback.style.backgroundColor = isError ? '#dc3545' : '#28a745';
+            feedback.style.color = 'white';
+            feedback.style.padding = '12px 24px';
+            feedback.style.borderRadius = '25px';
+            feedback.style.zIndex = '1000';
+            feedback.style.fontSize = '14px';
+            feedback.style.fontWeight = 'bold';
+            feedback.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+            feedback.style.animation = 'fadeInOut 2s ease-in-out';
+            document.body.appendChild(feedback);
+            setTimeout(() => {
+                if (feedback && feedback.remove) feedback.remove();
+            }, 2000);
+        }
+
+        // เพิ่ม CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            }
+        `;
+        document.head.appendChild(style);
+
         function connectMQTT() {
-            updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อ MQTT...');
+            updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อ MQTT Broker...');
             
-            // ใช้ WebSocket over TLS (wss) สำหรับ HiveMQ Cloud
+            // การเชื่อมต่อ WebSocket ไปยัง HiveMQ Cloud
             const brokerUrl = 'wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:8884/mqtt';
             
-            console.log('Connecting to MQTT broker:', brokerUrl);
+            const options = {
+                connectTimeout: 10000,
+                clientId: 'web_' + Math.random().toString(36).substr(2, 10),
+                username: 'captain-T',
+                password: 'Teerap@t_NN21',
+                clean: true,
+                reconnectPeriod: 5000,
+                keepalive: 60,
+                protocol: 'wss',
+                path: '/mqtt'
+            };
+            
+            console.log('🔌 Connecting to:', brokerUrl);
             
             client = mqtt.connect(brokerUrl, options);
 
             client.on('connect', () => {
-                console.log('✅ Connected to HiveMQ Cloud successfully!');
-                updateConnectionStatus('connected', '✅ เชื่อมต่อแล้ว');
+                console.log('✅ Connected to HiveMQ Cloud!');
+                updateConnectionStatus('connected', '✅ เชื่อมต่อสำเร็จ');
                 reconnectAttempts = 0;
+                showFeedback('เชื่อมต่อ MQTT สำเร็จ ✓');
                 
-                // Subscribe to all needed topics
-                client.subscribe('garden/sensor/temperature', { qos: 1 });
-                client.subscribe('garden/sensor/humidity', { qos: 1 });
-                client.subscribe('garden/sensor/soil_moisture', { qos: 1 });
-                client.subscribe('garden/signal', { qos: 1 });
-                client.subscribe('garden/max_working_time', { qos: 1 });
-                client.subscribe('garden/valve/+/status', { qos: 1 });
-                client.subscribe('garden/all_valve/status', { qos: 1 });
+                // Subscribe topics
+                const topics = [
+                    'garden/sensor/temperature',
+                    'garden/sensor/humidity',
+                    'garden/sensor/soil_moisture',
+                    'garden/signal',
+                    'garden/max_working_time',
+                    'garden/valve/+/status',
+                    'garden/all_valve/status'
+                ];
                 
-                console.log('Subscribed to all topics');
+                topics.forEach(topic => {
+                    client.subscribe(topic, { qos: 1 }, (err) => {
+                        if (err) console.error('Subscribe error:', topic, err);
+                        else console.log('Subscribed to:', topic);
+                    });
+                });
                 
-                // Request current status by publishing a dummy message
+                // Request initial data
                 setTimeout(() => {
-                    console.log('Requesting current status...');
+                    console.log('📡 Requesting initial data...');
                 }, 500);
             });
 
             client.on('error', (err) => {
-                console.error('MQTT Error:', err);
-                updateConnectionStatus('disconnected', '❌ เชื่อมต่อผิดพลาด');
+                console.error('❌ MQTT Error:', err);
+                updateConnectionStatus('disconnected', '❌ เชื่อมต่อล้มเหลว');
+                showFeedback('เชื่อมต่อ MQTT ล้มเหลว!', true);
             });
 
             client.on('reconnect', () => {
-                console.log('Reconnecting to MQTT...');
+                console.log('🔄 Reconnecting to MQTT...');
                 updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อใหม่...');
             });
 
             client.on('close', () => {
-                console.log('MQTT connection closed');
+                console.log('🔌 MQTT connection closed');
                 updateConnectionStatus('disconnected', '❌ ตัดการเชื่อมต่อ');
             });
 
@@ -172,106 +369,95 @@
                 const msgStr = message.toString();
                 console.log(`📩 Received: ${topic} = ${msgStr}`);
                 
-                // Process sensor data
-                if (topic === 'garden/sensor/temperature') {
-                    document.getElementById('temp').innerText = msgStr;
-                }
-                else if (topic === 'garden/sensor/humidity') {
-                    document.getElementById('hum').innerText = msgStr;
-                }
-                else if (topic === 'garden/sensor/soil_moisture') {
-                    let soilValue = parseInt(msgStr);
-                    let soilPercent = Math.floor(soilValue / 1023 * 100);
-                    document.getElementById('soil').innerHTML = `${soilPercent}% (${soilValue})`;
-                }
-                else if (topic === 'garden/signal') {
-                    document.getElementById('signal').innerText = msgStr;
-                }
-                else if (topic === 'garden/max_working_time') {
-                    document.getElementById('max_time').innerText = msgStr;
-                    document.getElementById('max_working_minutes').value = msgStr;
-                }
-                else if (topic === 'garden/valve/1/status') {
-                    updateValveUI('v1-status', msgStr);
-                }
-                else if (topic === 'garden/valve/2/status') {
-                    updateValveUI('v2-status', msgStr);
-                }
-                else if (topic === 'garden/valve/3/status') {
-                    updateValveUI('v3-status', msgStr);
-                }
-                else if (topic === 'garden/valve/4/status') {
-                    updateValveUI('v4-status', msgStr);
-                }
-                else if (topic === 'garden/all_valve/status') {
-                    // Update all valves based on all_valve status
-                    let allStatus = msgStr === '1';
-                    for(let i = 1; i <= 4; i++) {
-                        updateValveUI(`v${i}-status`, msgStr);
-                    }
+                // Update UI based on topic
+                switch(topic) {
+                    case 'garden/sensor/temperature':
+                        document.getElementById('temp').innerText = parseFloat(msgStr).toFixed(1);
+                        break;
+                    case 'garden/sensor/humidity':
+                        document.getElementById('hum').innerText = parseFloat(msgStr).toFixed(1);
+                        break;
+                    case 'garden/sensor/soil_moisture':
+                        let soilVal = parseInt(msgStr);
+                        let soilPercent = Math.floor(soilVal / 1023 * 100);
+                        document.getElementById('soil').innerHTML = `${soilPercent}% (${soilVal})`;
+                        break;
+                    case 'garden/signal':
+                        document.getElementById('signal').innerText = msgStr;
+                        break;
+                    case 'garden/max_working_time':
+                        document.getElementById('max_time').innerText = msgStr;
+                        document.getElementById('max_working_minutes').value = msgStr;
+                        break;
+                    case 'garden/valve/1/status':
+                        updateValveUI('v1-status', msgStr);
+                        break;
+                    case 'garden/valve/2/status':
+                        updateValveUI('v2-status', msgStr);
+                        break;
+                    case 'garden/valve/3/status':
+                        updateValveUI('v3-status', msgStr);
+                        break;
+                    case 'garden/valve/4/status':
+                        updateValveUI('v4-status', msgStr);
+                        break;
+                    case 'garden/all_valve/status':
+                        for(let i = 1; i <= 4; i++) {
+                            updateValveUI(`v${i}-status`, msgStr);
+                        }
+                        break;
                 }
             });
         }
 
-        // ฟังก์ชันอัปเดตสีและ Badge แจ้งรายละเอียดสถานะการทำงาน
         function updateValveUI(elementId, status) {
             const el = document.getElementById(elementId);
+            if (!el) return;
+            
             if (status === '1' || status === 1) {
-                el.innerText = '🟢 เปิด';
+                el.innerHTML = '🟢 เปิด';
                 el.className = 'status-badge status-on';
             } else {
-                el.innerText = '🔴 ปิด';
+                el.innerHTML = '🔴 ปิด';
                 el.className = 'status-badge status-off';
             }
         }
 
-        // ฟังก์ชันส่งคำสั่ง
         function sendCmd(topic, value) {
-            if(client && client.connected) {
+            if (client && client.connected) {
                 client.publish(topic, value, { qos: 1, retain: false });
-                console.log(`📤 Sent command: ${topic} -> ${value}`);
-                // แสดง feedback สั้นๆ
-                showFeedback('ส่งคำสั่งเรียบร้อย');
+                console.log(`📤 Sent: ${topic} -> ${value}`);
+                showFeedback(`ส่งคำสั่ง ${value === '1' ? 'เปิด' : 'ปิด'} วาล์วเรียบร้อย ✓`);
             } else {
                 console.error('MQTT not connected!');
-                alert('❌ ระบบไม่ได้เชื่อมต่อกับ MQTT Broker กรุณารอสักครู่หรือรีเฟรชหน้าเว็บ');
-                // พยายามเชื่อมต่อใหม่
-                if(!client || !client.connected) {
-                    connectMQTT();
+                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT กรุณารอสักครู่', true);
+                // Auto reconnect
+                if (!client || !client.connected) {
+                    setTimeout(connectMQTT, 2000);
                 }
             }
         }
 
         function setMaxWorkingTime() {
             let minutes = parseInt(document.getElementById('max_working_minutes').value);
-            if(isNaN(minutes)) minutes = 8;
-            if(minutes < 1) minutes = 1;
-            if(minutes > 1440) minutes = 1440;
+            if (isNaN(minutes)) minutes = 8;
+            minutes = Math.min(1440, Math.max(1, minutes));
             
             sendCmd('garden/max_working_time/set', minutes.toString());
-            showFeedback(`ตั้งเวลาใช้งานสูงสุด ${minutes} นาที`);
+            showFeedback(`ตั้งเวลาใช้งานสูงสุด ${minutes} นาที ✓`);
         }
 
-        function showFeedback(msg) {
-            let feedback = document.createElement('div');
-            feedback.textContent = msg;
-            feedback.style.position = 'fixed';
-            feedback.style.bottom = '20px';
-            feedback.style.left = '50%';
-            feedback.style.transform = 'translateX(-50%)';
-            feedback.style.backgroundColor = '#28a745';
-            feedback.style.color = 'white';
-            feedback.style.padding = '10px 20px';
-            feedback.style.borderRadius = '8px';
-            feedback.style.zIndex = '1000';
-            feedback.style.fontSize = '14px';
-            document.body.appendChild(feedback);
-            setTimeout(() => feedback.remove(), 2000);
-        }
-
-        // เริ่มต้นการเชื่อมต่อเมื่อโหลดหน้าเว็บ
+        // Auto connect on page load
         window.addEventListener('load', () => {
             connectMQTT();
+        });
+        
+        // Handle page visibility
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && (!client || !client.connected)) {
+                console.log('Page visible, reconnecting...');
+                connectMQTT();
+            }
         });
     </script>
 </body>
