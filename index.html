@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>HOMEGUMTEE Web Control - ระบบรดน้ำอัจฉริยะ</title>
+    <title>HOMEGUMTEE Web Control - ระบบรดน้ำอัจฉริยะ พร้อมตั้งเวลา</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         * {
@@ -18,7 +18,7 @@
             min-height: 100vh;
         }
         .container {
-            max-width: 500px;
+            max-width: 550px;
             margin: 0 auto;
         }
         .card { 
@@ -95,6 +95,25 @@
             padding: 12px; 
             font-size: 16px; 
         }
+        .btn-schedule-add {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            padding: 10px 20px;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .btn-schedule-delete {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+        .btn-schedule-edit {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+            padding: 4px 12px;
+            font-size: 12px;
+        }
         .sensor-val { 
             font-size: 22px; 
             color: #667eea; 
@@ -136,6 +155,7 @@
         .connecting { 
             background: #ffc107; 
             color: #333; 
+            animation: pulse 1.5s infinite;
         }
         .time-control {
             display: flex;
@@ -162,6 +182,113 @@
             margin-top: 8px;
             text-align: center;
         }
+        .schedule-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .schedule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .schedule-time {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .schedule-days {
+            font-size: 12px;
+            color: #666;
+        }
+        .schedule-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .schedule-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+        .schedule-active {
+            background: #28a745;
+            color: white;
+        }
+        .schedule-inactive {
+            background: #6c757d;
+            color: white;
+        }
+        .schedule-disabled {
+            opacity: 0.6;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            max-width: 350px;
+            width: 90%;
+            margin: 20px;
+        }
+        .modal-content h4 {
+            margin-top: 0;
+            text-align: center;
+        }
+        .modal-content input, .modal-content select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .modal-buttons button {
+            flex: 1;
+            margin: 0;
+        }
+        .day-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        .day-btn {
+            background: #e9ecef;
+            color: #333;
+            padding: 6px 12px;
+            margin: 0;
+            font-size: 12px;
+        }
+        .day-btn.selected {
+            background: #667eea;
+            color: white;
+        }
+        .footer {
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            margin-top: 20px;
+            opacity: 0.8;
+        }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -172,15 +299,34 @@
             85% { opacity: 1; transform: translateX(-50%) translateY(0); }
             100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
         }
-        .connecting {
-            animation: pulse 1.5s infinite;
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
         }
-        .footer {
-            text-align: center;
+        .tab-btn {
+            flex: 1;
+            background: #e9ecef;
+            color: #333;
+            padding: 10px;
+            margin: 0;
+            border-radius: 10px;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
-            font-size: 12px;
-            margin-top: 20px;
-            opacity: 0.8;
+        }
+        .schedule-empty {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+        .valve-select {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            width: 100%;
         }
     </style>
 </head>
@@ -201,43 +347,61 @@
         </div>
 
         <div class="card">
-            <h3>🔌 ควบคุมวาล์วน้ำ</h3>
-            
-            <div class="valve-row">
-                <span>💧 วาล์ว 1 (สวนหน้า): <span id="v1-status" class="status-badge status-off">🔴 ปิด</span></span>
-                <div>
-                    <button class="btn-on" onclick="sendCmd('garden/valve/1/set', '1')">▶ เปิด</button>
-                    <button class="btn-off" onclick="sendCmd('garden/valve/1/set', '0')">⏹ ปิด</button>
-                </div>
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="switchTab('control')">🔌 ควบคุมวาล์ว</button>
+                <button class="tab-btn" onclick="switchTab('schedule')">⏰ ตั้งเวลาอัตโนมัติ</button>
             </div>
             
-            <div class="valve-row">
-                <span>💧 วาล์ว 2 (สวนข้าง): <span id="v2-status" class="status-badge status-off">🔴 ปิด</span></span>
-                <div>
-                    <button class="btn-on" onclick="sendCmd('garden/valve/2/set', '1')">▶ เปิด</button>
-                    <button class="btn-off" onclick="sendCmd('garden/valve/2/set', '0')">⏹ ปิด</button>
+            <!-- แท็บควบคุมวาล์ว -->
+            <div id="tab-control">
+                <div class="valve-row">
+                    <span>💧 วาล์ว 1 (สวนหน้า): <span id="v1-status" class="status-badge status-off">🔴 ปิด</span></span>
+                    <div>
+                        <button class="btn-on" onclick="sendCmd('garden/valve/1/set', '1')">▶ เปิด</button>
+                        <button class="btn-off" onclick="sendCmd('garden/valve/1/set', '0')">⏹ ปิด</button>
+                    </div>
                 </div>
-            </div>
+                
+                <div class="valve-row">
+                    <span>💧 วาล์ว 2 (สวนข้าง): <span id="v2-status" class="status-badge status-off">🔴 ปิด</span></span>
+                    <div>
+                        <button class="btn-on" onclick="sendCmd('garden/valve/2/set', '1')">▶ เปิด</button>
+                        <button class="btn-off" onclick="sendCmd('garden/valve/2/set', '0')">⏹ ปิด</button>
+                    </div>
+                </div>
 
-            <div class="valve-row">
-                <span>💧 วาล์ว 3 (สวนหลัง): <span id="v3-status" class="status-badge status-off">🔴 ปิด</span></span>
-                <div>
-                    <button class="btn-on" onclick="sendCmd('garden/valve/3/set', '1')">▶ เปิด</button>
-                    <button class="btn-off" onclick="sendCmd('garden/valve/3/set', '0')">⏹ ปิด</button>
+                <div class="valve-row">
+                    <span>💧 วาล์ว 3 (สวนหลัง): <span id="v3-status" class="status-badge status-off">🔴 ปิด</span></span>
+                    <div>
+                        <button class="btn-on" onclick="sendCmd('garden/valve/3/set', '1')">▶ เปิด</button>
+                        <button class="btn-off" onclick="sendCmd('garden/valve/3/set', '0')">⏹ ปิด</button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="valve-row">
-                <span>💧 วาล์ว 4 (สวนดาดฟ้า): <span id="v4-status" class="status-badge status-off">🔴 ปิด</span></span>
-                <div>
-                    <button class="btn-on" onclick="sendCmd('garden/valve/4/set', '1')">▶ เปิด</button>
-                    <button class="btn-off" onclick="sendCmd('garden/valve/4/set', '0')">⏹ ปิด</button>
+                <div class="valve-row">
+                    <span>💧 วาล์ว 4 (สวนดาดฟ้า): <span id="v4-status" class="status-badge status-off">🔴 ปิด</span></span>
+                    <div>
+                        <button class="btn-on" onclick="sendCmd('garden/valve/4/set', '1')">▶ เปิด</button>
+                        <button class="btn-off" onclick="sendCmd('garden/valve/4/set', '0')">⏹ ปิด</button>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; margin-top: 20px; gap: 10px;">
+                    <button class="btn-all-on" onclick="sendCmd('garden/all_valve/set', '1')">✅ เปิดทั้งหมด</button>
+                    <button class="btn-all-off" onclick="sendCmd('garden/all_valve/set', '0')">❌ ปิดทั้งหมด</button>
                 </div>
             </div>
             
-            <div style="display: flex; justify-content: space-between; margin-top: 20px; gap: 10px;">
-                <button class="btn-all-on" onclick="sendCmd('garden/all_valve/set', '1')">✅ เปิดทั้งหมด</button>
-                <button class="btn-all-off" onclick="sendCmd('garden/all_valve/set', '0')">❌ ปิดทั้งหมด</button>
+            <!-- แท็บตั้งเวลาอัตโนมัติ -->
+            <div id="tab-schedule" style="display: none;">
+                <button class="btn-schedule-add" onclick="openAddScheduleModal()">➕ เพิ่มตารางเวลาใหม่</button>
+                <div id="schedule-list" style="margin-top: 15px;">
+                    <div class="schedule-empty">กำลังโหลดข้อมูล...</div>
+                </div>
+                <div class="info-text" style="margin-top: 15px;">
+                    * ระบบจะเปิด/ปิดวาล์วอัตโนมัติตามเวลาที่ตั้งไว้<br>
+                    * สามารถตั้งเวลาได้สูงสุด 10 ตารางต่อวาล์ว
+                </div>
             </div>
         </div>
 
@@ -254,12 +418,70 @@
         </div>
     </div>
     <div class="footer">
-        HOMEGUMTEE Smart Garden System | MQTT Real-time Control
+        HOMEGUMTEE Smart Garden System | MQTT Real-time Control with Schedule
+    </div>
+
+    <!-- Modal สำหรับเพิ่ม/แก้ไขตารางเวลา -->
+    <div id="schedule-modal" class="modal">
+        <div class="modal-content">
+            <h4 id="modal-title">➕ เพิ่มตารางเวลา</h4>
+            <select id="schedule-valve" class="valve-select">
+                <option value="1">วาล์ว 1 - สวนหน้า</option>
+                <option value="2">วาล์ว 2 - สวนข้าง</option>
+                <option value="3">วาล์ว 3 - สวนหลัง</option>
+                <option value="4">วาล์ว 4 - สวนดาดฟ้า</option>
+            </select>
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="schedule-start-hour" placeholder="เริ่ม ชม." min="0" max="23" style="width: 33%;">
+                <input type="number" id="schedule-start-min" placeholder="เริ่ม นาที" min="0" max="59" style="width: 33%;">
+                <span style="width: 34%; text-align: center;">ถึง</span>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                <input type="number" id="schedule-stop-hour" placeholder="หยุด ชม." min="0" max="23" style="width: 33%;">
+                <input type="number" id="schedule-stop-min" placeholder="หยุด นาที" min="0" max="59" style="width: 33%;">
+                <span style="width: 34%;"></span>
+            </div>
+            <div class="day-selector" id="day-selector">
+                <button type="button" class="day-btn" data-day="0">จ</button>
+                <button type="button" class="day-btn" data-day="1">อ</button>
+                <button type="button" class="day-btn" data-day="2">พ</button>
+                <button type="button" class="day-btn" data-day="3">พฤ</button>
+                <button type="button" class="day-btn" data-day="4">ศ</button>
+                <button type="button" class="day-btn" data-day="5">ส</button>
+                <button type="button" class="day-btn" data-day="6">อา</button>
+            </div>
+            <div style="margin: 10px 0;">
+                <button type="button" class="btn-schedule-edit" style="width: 32%;" onclick="selectAllDays()">ทุกวัน</button>
+                <button type="button" class="btn-schedule-edit" style="width: 32%;" onclick="selectWeekdays()">จันทร์-ศุกร์</button>
+                <button type="button" class="btn-schedule-edit" style="width: 32%;" onclick="selectWeekend()">เสาร์-อาทิตย์</button>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-off" onclick="closeModal()">ยกเลิก</button>
+                <button class="btn-on" onclick="saveSchedule()">บันทึก</button>
+            </div>
+        </div>
     </div>
 
     <script>
         let client = null;
         let reconnectCount = 0;
+        let schedules = [];
+        let editIndex = -1;
+        
+        // ฟังก์ชันสลับแท็บ
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (tab === 'control') {
+                document.querySelector('.tab-btn:first-child').classList.add('active');
+                document.getElementById('tab-control').style.display = 'block';
+                document.getElementById('tab-schedule').style.display = 'none';
+            } else {
+                document.querySelector('.tab-btn:last-child').classList.add('active');
+                document.getElementById('tab-control').style.display = 'none';
+                document.getElementById('tab-schedule').style.display = 'block';
+                refreshScheduleList();
+            }
+        }
         
         function updateConnectionStatus(status, message) {
             const el = document.getElementById('conn-status');
@@ -310,10 +532,20 @@
                 console.log(`📡 Requested status for valve ${valveNum}`);
             }
         }
+        
+        function requestScheduleList() {
+            if (client && client.connected) {
+                client.publish('garden/schedule/get', '', { qos: 0 });
+                console.log('📡 Requested schedule list');
+            }
+        }
+        
+        function refreshScheduleList() {
+            requestScheduleList();
+        }
 
         function sendCmd(topic, value) {
             if (client && client.connected) {
-                // ✅ อัปเดต UI ทันที (optimistic update)
                 if (topic === 'garden/all_valve/set') {
                     for(let i = 1; i <= 4; i++) {
                         updateValveUI(`v${i}-status`, value);
@@ -327,12 +559,10 @@
                     }
                 }
                 
-                // ส่งคำสั่งไปที่ ESP32
                 client.publish(topic, value, { qos: 1, retain: false });
                 console.log(`📤 Sent: ${topic} -> ${value}`);
                 showFeedback(`ส่งคำสั่ง ${value === '1' ? 'เปิด' : 'ปิด'} วาล์ว ✓`);
                 
-                // ✅ ขอสถานะจริงจาก ESP32 หลังจาก 0.5 วินาที
                 setTimeout(() => {
                     if (client && client.connected) {
                         if (topic === 'garden/all_valve/set') {
@@ -365,7 +595,211 @@
             sendCmd('garden/max_working_time/set', minutes.toString());
             showFeedback(`ตั้งเวลาใช้งานสูงสุด ${minutes} นาที ✓`);
         }
-
+        
+        // ========== Schedule Functions ==========
+        function openAddScheduleModal() {
+            editIndex = -1;
+            document.getElementById('modal-title').innerText = '➕ เพิ่มตารางเวลา';
+            document.getElementById('schedule-valve').value = '1';
+            document.getElementById('schedule-start-hour').value = '';
+            document.getElementById('schedule-start-min').value = '';
+            document.getElementById('schedule-stop-hour').value = '';
+            document.getElementById('schedule-stop-min').value = '';
+            // Reset day buttons
+            document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('schedule-modal').style.display = 'flex';
+        }
+        
+        function openEditSchedule(index) {
+            if (index < 0 || index >= schedules.length) return;
+            editIndex = index;
+            const sch = schedules[index];
+            document.getElementById('modal-title').innerText = '✏️ แก้ไขตารางเวลา';
+            document.getElementById('schedule-valve').value = sch.valve;
+            document.getElementById('schedule-start-hour').value = sch.startHour;
+            document.getElementById('schedule-start-min').value = sch.startMin;
+            document.getElementById('schedule-stop-hour').value = sch.stopHour;
+            document.getElementById('schedule-stop-min').value = sch.stopMin;
+            
+            // Set day buttons based on days mask
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                const day = parseInt(btn.dataset.day);
+                if ((sch.days >> day) & 1) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+            document.getElementById('schedule-modal').style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('schedule-modal').style.display = 'none';
+            editIndex = -1;
+        }
+        
+        function getSelectedDays() {
+            let days = 0;
+            document.querySelectorAll('.day-btn.selected').forEach(btn => {
+                const day = parseInt(btn.dataset.day);
+                days |= (1 << day);
+            });
+            return days;
+        }
+        
+        function getDayString(days) {
+            const dayNames = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
+            let result = [];
+            for (let i = 0; i < 7; i++) {
+                if ((days >> i) & 1) result.push(dayNames[i]);
+            }
+            if (result.length === 0) return 'ไม่ซ้ำ';
+            if (result.length === 7) return 'ทุกวัน';
+            if (result.join('') === 'จอพพฤศส') return 'จันทร์-ศุกร์';
+            if (result.join('') === 'สอา') return 'เสาร์-อาทิตย์';
+            return result.join('');
+        }
+        
+        function selectAllDays() {
+            document.querySelectorAll('.day-btn').forEach(btn => btn.classList.add('selected'));
+        }
+        
+        function selectWeekdays() {
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                const day = parseInt(btn.dataset.day);
+                if (day >= 0 && day <= 4) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+        
+        function selectWeekend() {
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                const day = parseInt(btn.dataset.day);
+                if (day === 5 || day === 6) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+        
+        function saveSchedule() {
+            const valveNum = parseInt(document.getElementById('schedule-valve').value);
+            let startHour = parseInt(document.getElementById('schedule-start-hour').value);
+            let startMin = parseInt(document.getElementById('schedule-start-min').value);
+            let stopHour = parseInt(document.getElementById('schedule-stop-hour').value);
+            let stopMin = parseInt(document.getElementById('schedule-stop-min').value);
+            const days = getSelectedDays();
+            
+            if (isNaN(startHour)) startHour = 0;
+            if (isNaN(startMin)) startMin = 0;
+            if (isNaN(stopHour)) stopHour = 0;
+            if (isNaN(stopMin)) stopMin = 0;
+            
+            if (startHour < 0 || startHour > 23 || startMin < 0 || startMin > 59 ||
+                stopHour < 0 || stopHour > 23 || stopMin < 0 || stopMin > 59) {
+                showFeedback('⚠️ กรุณากรอกเวลาให้ถูกต้อง', true);
+                return;
+            }
+            
+            if (days === 0) {
+                showFeedback('⚠️ กรุณาเลือกวันที่ต้องการ', true);
+                return;
+            }
+            
+            const scheduleData = {
+                valve: valveNum,
+                startHour: startHour,
+                startMin: startMin,
+                stopHour: stopHour,
+                stopMin: stopMin,
+                days: days
+            };
+            
+            if (client && client.connected) {
+                const payload = JSON.stringify(scheduleData);
+                client.publish('garden/schedule/add', payload, { qos: 1 });
+                console.log('📤 Schedule added:', payload);
+                showFeedback('📅 บันทึกตารางเวลาเรียบร้อย ✓');
+                closeModal();
+                setTimeout(() => requestScheduleList(), 500);
+            } else {
+                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
+            }
+        }
+        
+        function deleteSchedule(index) {
+            if (confirm('คุณต้องการลบตารางเวลานี้ใช่หรือไม่?')) {
+                if (client && client.connected) {
+                    client.publish('garden/schedule/delete', String(index), { qos: 1 });
+                    console.log('📤 Schedule deleted:', index);
+                    showFeedback('🗑️ ลบตารางเวลาเรียบร้อย');
+                    setTimeout(() => requestScheduleList(), 500);
+                }
+            }
+        }
+        
+        function renderScheduleList() {
+            const container = document.getElementById('schedule-list');
+            if (!container) return;
+            
+            if (!schedules || schedules.length === 0) {
+                container.innerHTML = '<div class="schedule-empty">📅 ยังไม่มีตารางเวลา<br>กดปุ่ม "➕ เพิ่มตารางเวลาใหม่" เพื่อเริ่มตั้งค่า</div>';
+                return;
+            }
+            
+            let html = '';
+            const valveNames = ['', 'สวนหน้า', 'สวนข้าง', 'สวนหลัง', 'สวนดาดฟ้า'];
+            
+            for (let i = 0; i < schedules.length; i++) {
+                const sch = schedules[i];
+                const timeStr = `${String(sch.startHour).padStart(2,'0')}:${String(sch.startMin).padStart(2,'0')} - ${String(sch.stopHour).padStart(2,'0')}:${String(sch.stopMin).padStart(2,'0')}`;
+                const dayStr = getDayString(sch.days);
+                const statusClass = sch.enabled ? 'schedule-active' : 'schedule-inactive';
+                const statusText = sch.active ? '● กำลังทำงาน' : (sch.enabled ? '○ รอทำงาน' : '⊘ ปิดใช้งาน');
+                
+                html += `
+                    <div class="schedule-item ${sch.enabled ? '' : 'schedule-disabled'}">
+                        <div class="schedule-header">
+                            <div>
+                                <strong>💧 ${valveNames[sch.valve] || 'วาล์ว '+sch.valve}</strong>
+                                <span class="schedule-badge ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="schedule-actions">
+                                <button class="btn-schedule-edit" onclick="openEditSchedule(${i})">✏️ แก้ไข</button>
+                                <button class="btn-schedule-delete" onclick="deleteSchedule(${i})">🗑️ ลบ</button>
+                            </div>
+                        </div>
+                        <div class="schedule-time">⏰ ${timeStr}</div>
+                        <div class="schedule-days">📅 ${dayStr}</div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+        
+        // ตั้งค่า day button click events
+        function setupDayButtons() {
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    this.classList.toggle('selected');
+                };
+            });
+        }
+        
+        // ปิด modal เมื่อคลิกด้านนอก
+        window.onclick = function(event) {
+            const modal = document.getElementById('schedule-modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        // ========== MQTT Connection ==========
         function connectMQTT() {
             if (reconnectCount >= 10) {
                 updateConnectionStatus('disconnected', '❌ เชื่อมต่อไม่สำเร็จ กรุณารีเฟรช');
@@ -417,7 +851,8 @@
                     'garden/signal',
                     'garden/max_working_time',
                     'garden/valve/+/status',
-                    'garden/all_valve/status'
+                    'garden/all_valve/status',
+                    'garden/schedule/list'
                 ];
                 
                 topics.forEach(topic => {
@@ -427,11 +862,11 @@
                     });
                 });
                 
-                // ขอสถานะปัจจุบันทั้งหมด
                 setTimeout(() => {
                     for(let i = 1; i <= 4; i++) {
                         requestValveStatus(i);
                     }
+                    requestScheduleList();
                 }, 1000);
             });
             
@@ -491,12 +926,30 @@
                             updateValveUI(`v${i}-status`, msgStr);
                         }
                         break;
+                    case 'garden/schedule/list':
+                        try {
+                            const data = JSON.parse(msgStr);
+                            if (data.schedules) {
+                                schedules = data.schedules;
+                            } else if (Array.isArray(data)) {
+                                schedules = data;
+                            } else {
+                                schedules = [];
+                            }
+                            renderScheduleList();
+                        } catch(e) {
+                            console.error('Parse schedule error:', e);
+                            schedules = [];
+                            renderScheduleList();
+                        }
+                        break;
                 }
             });
         }
 
         window.addEventListener('load', () => {
             connectMQTT();
+            setupDayButtons();
         });
         
         document.addEventListener('visibilitychange', () => {
