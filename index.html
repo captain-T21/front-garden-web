@@ -23,7 +23,6 @@
             margin: 0 auto;
             padding-bottom: 30px;
         }
-        /* ดีไซน์ปุ่มสลับสถานที่ทรงมนสุดทันสมัยสำหรับมือถือ */
         .location-switcher {
             display: flex;
             background: rgba(255, 255, 255, 0.2);
@@ -43,6 +42,8 @@
             margin: 0;
             transition: all 0.3s ease;
             box-shadow: none;
+            cursor: pointer;
+            border: none;
         }
         .loc-tab-btn.active {
             background: white;
@@ -295,6 +296,8 @@
             max-width: 350px;
             width: 90%;
             margin: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         .modal-content h4 {
             margin-top: 0;
@@ -306,6 +309,7 @@
             margin: 8px 0;
             border-radius: 8px;
             border: 1px solid #ddd;
+            font-size: 14px;
         }
         .modal-buttons {
             display: flex;
@@ -328,10 +332,18 @@
             padding: 6px 12px;
             margin: 0;
             font-size: 12px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            flex: 1;
+            min-width: 30px;
         }
         .day-btn.selected {
             background: #667eea;
             color: white;
+            border-color: #764ba2;
+        }
+        .day-btn:hover {
+            transform: scale(1.05);
         }
         .footer {
             text-align: center;
@@ -362,6 +374,9 @@
             padding: 10px;
             margin: 0;
             border-radius: 10px;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
         }
         .tab-btn.active {
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -379,18 +394,25 @@
             margin-bottom: 10px;
             width: 100%;
         }
+        .time-input-group {
+            display: flex;
+            gap: 8px;
+        }
+        .time-input-group input {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         
-        <!-- 💡 ส่วน Pill Tab สลับสถานที่ระดับสากล -->
+        <!-- Location Switcher -->
         <div class="location-switcher">
             <button id="btn-loc-home" class="loc-tab-btn active" onclick="switchLocation('home')">🏡 สวนที่บ้าน</button>
             <button id="btn-loc-office" class="loc-tab-btn" onclick="switchLocation('office')">🏫 วิทยาลัย</button>
         </div>
 
-        <!-- ชื่อหัวข้อระบบหลักแปรผันตามสถานที่และสามารถกดเฟืองแก้ไขแยกกันได้ -->
+        <!-- System Title -->
         <h2>
             <span id="title-sys-name">🌱 HOMEGUMTEE Smart Garden</span>
             <button class="btn-edit-name" onclick="changeSystemName()" title="เปลี่ยนชื่อระบบ">⚙️</button>
@@ -400,6 +422,7 @@
             <span id="conn-status" class="connection-status connecting">🔄 กำลังเชื่อมต่อ MQTT...</span>
         </div>
         
+        <!-- Sensors Card -->
         <div class="card">
             <h3>📊 ค่าเซนเซอร์แบบ Real-time</h3>
             <p>🌡️ อุณหภูมิ: <span class="sensor-val"><span id="temp">--</span> °C</span></p>
@@ -409,13 +432,14 @@
             <p>⏱️ เวลาทำงานสูงสุด: <span class="sensor-val"><span id="max_time">--</span> นาที</span></p>
         </div>
 
+        <!-- Control Card -->
         <div class="card">
             <div class="tab-buttons">
                 <button class="tab-btn active" onclick="switchTab('control')">🔌 ควบคุมวาล์ว</button>
                 <button class="tab-btn" onclick="switchTab('schedule')">⏰ ตั้งเวลาอัตโนมัติ</button>
             </div>
             
-            <!-- แท็บควบคุมวาล์ว -->
+            <!-- Control Tab -->
             <div id="tab-control">
                 <div class="valve-row">
                     <span>💧 <span id="lbl-v1-name">วาล์ว 1</span>: <span id="v1-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(1)">✏️</button></span>
@@ -437,7 +461,7 @@
                     <span>💧 <span id="lbl-v3-name">วาล์ว 3</span>: <span id="v3-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(3)">✏️</button></span>
                     <div>
                         <button class="btn-on" onclick="sendValveCmd(3, '1')">▶ เปิด</button>
-                        <button class="btn-off" onclick="sendCmd('all_valve/set', '0')">⏹ ปิด</button>
+                        <button class="btn-off" onclick="sendValveCmd(3, '0')">⏹ ปิด</button>
                     </div>
                 </div>
 
@@ -455,7 +479,7 @@
                 </div>
             </div>
             
-            <!-- แท็บตั้งเวลาอัตโนมัติ -->
+            <!-- Schedule Tab -->
             <div id="tab-schedule" style="display: none;">
                 <button class="btn-schedule-add" onclick="openAddScheduleModal()">➕ เพิ่มตารางเวลาใหม่</button>
                 <div id="schedule-list" style="margin-top: 15px;">
@@ -464,11 +488,12 @@
             </div>
         </div>
 
+        <!-- Max Working Time Card -->
         <div class="card">
             <h3>⚙️ ตั้งค่าเวลาทำงานสูงสุด</h3>
             <div class="time-control">
                 <input type="number" id="max_working_minutes" min="1" max="1440" value="8" step="1">
-                <button onclick="setMaxWorkingTime()">💾 บันทึกการตั้งค่า</button>
+                <button onclick="setMaxWorkingTime()">💾 บันทึก</button>
             </div>
         </div>
     </div>
@@ -476,20 +501,21 @@
         HOMEGUMTEE Multi-Location Smart Garden System | Real-time SPA Control
     </div>
 
-    <!-- Modal เพิ่มตารางเวลา -->
+    <!-- Schedule Modal -->
     <div id="schedule-modal" class="modal">
         <div class="modal-content">
             <h4 id="modal-title">➕ เพิ่มตารางเวลา</h4>
             <select id="schedule-valve" class="valve-select"></select>
-            <div style="display: flex; gap: 10px;">
-                <input type="number" id="schedule-start-hour" placeholder="เริ่ม ชม." min="0" max="23" style="width: 33%;">
-                <input type="number" id="schedule-start-min" placeholder="เริ่ม นาที" min="0" max="59" style="width: 33%;">
-                <span style="width: 34%; text-align: center; line-height: 40px;">ถึง</span>
+            <div class="time-input-group">
+                <input type="number" id="schedule-start-hour" placeholder="เริ่ม ชม." min="0" max="23">
+                <span style="line-height: 40px;">:</span>
+                <input type="number" id="schedule-start-min" placeholder="เริ่ม นาที" min="0" max="59">
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 8px;">
-                <input type="number" id="schedule-stop-hour" placeholder="หยุด ชม." min="0" max="23" style="width: 33%;">
-                <input type="number" id="schedule-stop-min" placeholder="หยุด นาที" min="0" max="59" style="width: 33%;">
-                <span style="width: 34%;"></span>
+            <div style="text-align: center; margin: 5px 0;">➡️</div>
+            <div class="time-input-group">
+                <input type="number" id="schedule-stop-hour" placeholder="หยุด ชม." min="0" max="23">
+                <span style="line-height: 40px;">:</span>
+                <input type="number" id="schedule-stop-min" placeholder="หยุด นาที" min="0" max="59">
             </div>
             <div class="day-selector" id="day-selector">
                 <button type="button" class="day-btn" data-day="0">จ</button>
@@ -500,10 +526,10 @@
                 <button type="button" class="day-btn" data-day="5">ส</button>
                 <button type="button" class="day-btn" data-day="6">อา</button>
             </div>
-            <div style="margin: 10px 0; display: flex; gap: 4px;">
-                <button type="button" class="btn-schedule-edit" style="flex: 1; padding: 6px 0;" onclick="selectAllDays()">ทุกวัน</button>
-                <button type="button" class="btn-schedule-edit" style="flex: 1; padding: 6px 0;" onclick="selectWeekdays()">จ.-ศ.</button>
-                <button type="button" class="btn-schedule-edit" style="flex: 1; padding: 6px 0;" onclick="selectWeekend()">ส.-อา.</button>
+            <div style="margin: 10px 0; display: flex; gap: 4px; flex-wrap: wrap;">
+                <button type="button" class="btn-schedule-edit" style="flex: 1; min-width: 80px; padding: 6px 0;" onclick="selectAllDays()">ทุกวัน</button>
+                <button type="button" class="btn-schedule-edit" style="flex: 1; min-width: 80px; padding: 6px 0;" onclick="selectWeekdays()">จ.-ศ.</button>
+                <button type="button" class="btn-schedule-edit" style="flex: 1; min-width: 80px; padding: 6px 0;" onclick="selectWeekend()">ส.-อา.</button>
             </div>
             <div class="modal-buttons">
                 <button class="btn-off" onclick="closeModal()">ยกเลิก</button>
@@ -517,9 +543,9 @@
         let reconnectCount = 0;
         let schedules = [];
         let currentTab = 'control';
+        let current_loc = 'home';
         
-        // 🔄 ระบบแยกแคชหน่วยความจำ 2 สถานที่ออกจากกันอย่างอิสระ
-        let current_loc = 'home'; // ค่าเริ่มต้นเกาะที่ 'home' (ที่บ้าน)
+        // Location configurations with default names
         let location_configs = {
             home: {
                 sys_name: "HOMEGUMTEE สวนที่บ้าน",
@@ -531,62 +557,83 @@
             }
         };
 
-        // โหลดข้อมูลแคช LocalStorage ทันทีเพื่อความเร็วในการแสดงผล
+        // ========== Initialization Functions ==========
         function loadLocalCache() {
             ['home', 'office'].forEach(loc => {
-                if(localStorage.getItem(loc + '_sys_name')) {
-                    location_configs[loc].sys_name = localStorage.getItem(loc + '_sys_name');
-                }
-                for(let i=1; i<=4; i++) {
-                    if(localStorage.getItem(loc + '_v' + i + '_name')) {
-                        location_configs[loc].valves[i-1] = localStorage.getItem(loc + '_v' + i + '_name');
-                    }
+                const savedSysName = localStorage.getItem(loc + '_sys_name');
+                if (savedSysName) location_configs[loc].sys_name = savedSysName;
+                
+                for (let i = 1; i <= 4; i++) {
+                    const savedValveName = localStorage.getItem(loc + '_v' + i + '_name');
+                    if (savedValveName) location_configs[loc].valves[i-1] = savedValveName;
                 }
             });
             renderActiveLocationUI();
         }
 
-        // อัปเดตข้อความบนหน้าจอตามสถานที่ปัจจุบันที่เลือก
         function renderActiveLocationUI() {
-            let config = location_configs[current_loc];
+            const config = location_configs[current_loc];
             document.getElementById('title-sys-name').innerText = config.sys_name;
-            for(let i=1; i<=4; i++) {
+            for (let i = 1; i <= 4; i++) {
                 document.getElementById('lbl-v' + i + '_name').innerText = config.valves[i-1];
             }
-            if(currentTab === 'schedule') renderScheduleList();
+            if (currentTab === 'schedule') renderScheduleList();
         }
 
-        // ฟังก์ชันสลับสถานที่เสร็จใน 0.1 วินาที (สลับท่อพ่นสัญญาน MQTT Prefix ทันที)
+        // ========== Location Switching ==========
         function switchLocation(loc) {
             if (current_loc === loc) return;
             current_loc = loc;
             
+            // Update tab buttons
             document.getElementById('btn-loc-home').classList.toggle('active', loc === 'home');
             document.getElementById('btn-loc-office').classList.toggle('active', loc === 'office');
             
-            // รีเซ็ตหน้าจอตัวเลขช่วงเปลี่ยนถ่ายสาย
+            // Reset display values
             document.getElementById('temp').innerText = '--';
             document.getElementById('hum').innerText = '--';
             document.getElementById('soil').innerText = '--';
             document.getElementById('signal').innerText = '--';
             document.getElementById('max_time').innerText = '--';
-            for(let i=1; i<=4; i++) updateValveUI(`v${i}-status`, '0');
+            
+            for (let i = 1; i <= 4; i++) {
+                updateValveUI(`v${i}-status`, '0');
+            }
+            
             document.getElementById('schedule-list').innerHTML = '<div class="schedule-empty">กำลังโหลดข้อมูล...</div>';
-
+            
             renderActiveLocationUI();
             showFeedback(`สลับไปคุม: ${location_configs[loc].sys_name} ✓`);
             
-            // ส่งสัญญานไปขอข้อมูลด่วนจากบอร์ดตัวใหม่ที่สลับไปหา
-            if(client && client.connected) {
-                for(let i = 1; i <= 4; i++) client.publish(`garden/${current_loc}/valve/${i}/get`, '', { qos: 0 });
-                client.publish(`garden/${current_loc}/config/get`, '', { qos: 0 });
-                client.publish(`garden/${current_loc}/schedule/get`, '', { qos: 0 });
+            // Request data from new location
+            if (client && client.connected) {
+                requestAllData();
             }
         }
 
+        function requestAllData() {
+            if (!client || !client.connected) return;
+            
+            // Request valve statuses
+            for (let i = 1; i <= 4; i++) {
+                client.publish(`garden/${current_loc}/valve/${i}/get`, '', { qos: 0 });
+            }
+            
+            // Request config
+            client.publish(`garden/${current_loc}/config/get`, '', { qos: 0 });
+            
+            // Request schedules
+            client.publish(`garden/${current_loc}/schedule/get`, '', { qos: 0 });
+            
+            // Request max working time
+            client.publish(`garden/${current_loc}/max_working_time/get`, '', { qos: 0 });
+        }
+
+        // ========== Tab Switching ==========
         function switchTab(tab) {
             currentTab = tab;
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            
             if (tab === 'control') {
                 document.querySelector('.tab-btn:first-child').classList.add('active');
                 document.getElementById('tab-control').style.display = 'block';
@@ -595,118 +642,173 @@
                 document.querySelector('.tab-btn:last-child').classList.add('active');
                 document.getElementById('tab-control').style.display = 'none';
                 document.getElementById('tab-schedule').style.display = 'block';
-                if(client && client.connected) client.publish(`garden/${current_loc}/schedule/get`, '', { qos: 0 });
+                if (client && client.connected) {
+                    client.publish(`garden/${current_loc}/schedule/get`, '', { qos: 0 });
+                }
             }
         }
-        
+
+        // ========== UI Update Functions ==========
         function updateConnectionStatus(status, message) {
             const el = document.getElementById('conn-status');
-            if (el) { el.textContent = message; el.className = 'connection-status ' + status; }
+            if (el) {
+                el.textContent = message;
+                el.className = 'connection-status ' + status;
+            }
         }
 
         function showFeedback(msg, isError = false) {
-            let feedback = document.createElement('div');
+            const feedback = document.createElement('div');
             feedback.textContent = msg;
-            feedback.style.position = 'fixed'; feedback.style.bottom = '20px'; feedback.style.left = '50%'; feedback.style.transform = 'translateX(-50%)';
-            feedback.style.backgroundColor = isError ? '#dc3545' : '#28a745'; feedback.style.color = 'white'; feedback.style.padding = '12px 24px'; feedback.style.borderRadius = '25px';
-            feedback.style.zIndex = '1000'; feedback.style.fontSize = '14px'; feedback.style.fontWeight = 'bold'; feedback.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
-            feedback.style.animation = 'fadeInOut 2s ease-in-out'; document.body.appendChild(feedback);
-            setTimeout(() => { if (feedback) feedback.remove(); }, 2000);
+            feedback.style.position = 'fixed';
+            feedback.style.bottom = '20px';
+            feedback.style.left = '50%';
+            feedback.style.transform = 'translateX(-50%)';
+            feedback.style.backgroundColor = isError ? '#dc3545' : '#28a745';
+            feedback.style.color = 'white';
+            feedback.style.padding = '12px 24px';
+            feedback.style.borderRadius = '25px';
+            feedback.style.zIndex = '1000';
+            feedback.style.fontSize = '14px';
+            feedback.style.fontWeight = 'bold';
+            feedback.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+            feedback.style.animation = 'fadeInOut 2s ease-in-out';
+            feedback.style.animationFillMode = 'forwards';
+            document.body.appendChild(feedback);
+            
+            setTimeout(() => {
+                if (feedback && feedback.parentNode) feedback.remove();
+            }, 2000);
         }
 
         function updateValveUI(elementId, status) {
             const el = document.getElementById(elementId);
             if (!el) return;
-            if (status === '1' || status === 1) {
-                el.innerHTML = '🟢 เปิด'; el.className = 'status-badge status-on';
+            
+            if (status === '1' || status === 1 || status === true) {
+                el.innerHTML = '🟢 เปิด';
+                el.className = 'status-badge status-on';
             } else {
-                el.innerHTML = '🔴 ปิด'; el.className = 'status-badge status-off';
+                el.innerHTML = '🔴 ปิด';
+                el.className = 'status-badge status-off';
             }
         }
 
-        // คำสั่งยิงคำสั่งไปหาบอร์ดตัวที่ระบุผ่านพิกัด Prefix ปัจจุบัน
+        // ========== MQTT Commands ==========
         function sendCmd(subTopic, value) {
             if (client && client.connected) {
-                let fullTopic = `garden/${current_loc}/${subTopic}`;
+                const fullTopic = `garden/${current_loc}/${subTopic}`;
                 client.publish(fullTopic, value, { qos: 1, retain: false });
                 showFeedback(`ส่งคำสั่งเรียบร้อย ✓`);
-            } else showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
+            } else {
+                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
+            }
         }
 
         function sendValveCmd(num, state) {
             if (client && client.connected) {
                 updateValveUI(`v${num}-status`, state);
                 sendCmd(`valve/${num}/set`, state);
-            } else showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
+            } else {
+                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
+            }
         }
 
+        // ========== Configuration Functions ==========
         function setMaxWorkingTime() {
-            let minutes = parseInt(document.getElementById('max_working_minutes').value);
-            if (isNaN(minutes)) minutes = 8;
+            const minutes = parseInt(document.getElementById('max_working_minutes').value);
+            if (isNaN(minutes) || minutes < 1 || minutes > 1440) {
+                showFeedback('⚠️ กรุณาระบุเวลาระหว่าง 1-1440 นาที', true);
+                return;
+            }
             sendCmd('max_working_time/set', minutes.toString());
         }
 
         function changeSystemName() {
-            let config = location_configs[current_loc];
-            let newName = prompt(`ระบุชื่อระบบใหม่สำหรับ [${current_loc === 'home' ? 'ที่บ้าน' : 'วิทยาลัย'}]:`, config.sys_name);
+            const config = location_configs[current_loc];
+            const newName = prompt(`ระบุชื่อระบบใหม่สำหรับ [${current_loc === 'home' ? 'ที่บ้าน' : 'วิทยาลัย'}]:`, config.sys_name);
             if (newName && newName.trim() !== "" && newName.length < 60) {
-                config.sys_name = newName;
-                document.getElementById('title-sys-name').innerText = newName;
-                localStorage.setItem(current_loc + '_sys_name', newName);
-                if(client && client.connected) client.publish(`garden/${current_loc}/config/sys_name/set`, newName, { qos: 1, retain: true });
+                config.sys_name = newName.trim();
+                document.getElementById('title-sys-name').innerText = config.sys_name;
+                localStorage.setItem(current_loc + '_sys_name', config.sys_name);
+                if (client && client.connected) {
+                    client.publish(`garden/${current_loc}/config/sys_name/set`, config.sys_name, { qos: 1, retain: true });
+                }
                 showFeedback("บันทึกชื่อระบบเรียบร้อย ✓");
             }
         }
 
         function changeValveName(num) {
-            let config = location_configs[current_loc];
-            let newName = prompt(`ระบุชื่อใหม่สำหรับ วาล์ว ${num} ของ [${current_loc === 'home' ? 'ที่บ้าน' : 'วิทยาลัย'}]:`, config.valves[num-1]);
+            const config = location_configs[current_loc];
+            const newName = prompt(`ระบุชื่อใหม่สำหรับ วาล์ว ${num} ของ [${current_loc === 'home' ? 'ที่บ้าน' : 'วิทยาลัย'}]:`, config.valves[num-1]);
             if (newName && newName.trim() !== "" && newName.length < 30) {
-                config.valves[num-1] = newName;
-                document.getElementById('lbl-v'+num+'_name').innerText = newName;
-                localStorage.setItem(current_loc + '_v' + num + '_name', newName);
-                if(client && client.connected) client.publish(`garden/${current_loc}/config/v${num}_name/set`, newName, { qos: 1, retain: true });
+                config.valves[num-1] = newName.trim();
+                document.getElementById('lbl-v'+num+'_name').innerText = config.valves[num-1];
+                localStorage.setItem(current_loc + '_v' + num + '_name', config.valves[num-1]);
+                if (client && client.connected) {
+                    client.publish(`garden/${current_loc}/config/v${num}_name/set`, config.valves[num-1], { qos: 1, retain: true });
+                }
                 showFeedback(`เปลี่ยนชื่อวาล์ว ${num} เรียบร้อย ✓`);
             }
         }
-        
+
         // ========== Schedule Functions ==========
-        function openAddScheduleModal() {
-            let select = document.getElementById('schedule-valve');
-            select.innerHTML = '';
-            for(let i=0; i<4; i++) {
-                select.innerHTML += `<option value="${i+1}">${location_configs[current_loc].valves[i]}</option>`;
+        function requestScheduleList() {
+            if (client && client.connected) {
+                client.publish(`garden/${current_loc}/schedule/get`, '', { qos: 0 });
             }
+        }
+
+        function openAddScheduleModal() {
+            const select = document.getElementById('schedule-valve');
+            select.innerHTML = '';
+            for (let i = 0; i < 4; i++) {
+                const option = document.createElement('option');
+                option.value = i + 1;
+                option.textContent = location_configs[current_loc].valves[i];
+                select.appendChild(option);
+            }
+            
             document.getElementById('modal-title').innerText = '➕ เพิ่มตารางเวลา';
             document.getElementById('schedule-start-hour').value = '';
             document.getElementById('schedule-start-min').value = '';
             document.getElementById('schedule-stop-hour').value = '';
             document.getElementById('schedule-stop-min').value = '';
+            
             document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('selected'));
             document.getElementById('schedule-modal').style.display = 'flex';
         }
-        
-        function closeModal() { document.getElementById('schedule-modal').style.display = 'none'; }
+
+        function closeModal() {
+            document.getElementById('schedule-modal').style.display = 'none';
+        }
+
         function getSelectedDays() {
             let days = 0;
             document.querySelectorAll('.day-btn.selected').forEach(btn => {
-                const day = parseInt(btn.dataset.day); days |= (1 << day);
+                const day = parseInt(btn.dataset.day);
+                days |= (1 << day);
             });
             return days;
         }
-        
+
         function getDayString(days) {
             const dayNames = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
-            let result = [];
-            for (let i = 0; i < 7; i++) if ((days >> i) & 1) result.push(dayNames[i]);
-            if (result.length === 0) return 'ไม่ซ้ำ';
+            const result = [];
+            for (let i = 0; i < 7; i++) {
+                if ((days >> i) & 1) result.push(dayNames[i]);
+            }
+            if (result.length === 0) return 'ไม่เลือกวัน';
             if (result.length === 7) return 'ทุกวัน';
             if (result.join('') === 'จอพพฤศ') return 'จันทร์-ศุกร์';
             if (result.join('') === 'สอา') return 'เสาร์-อาทิตย์';
             return result.join(', ');
         }
-        
-        function selectAllDays() { document.querySelectorAll('.day-btn').forEach(btn => btn.classList.add('selected')); }
+
+        function selectAllDays() {
+            document.querySelectorAll('.day-btn').forEach(btn => btn.classList.add('selected'));
+        }
+
         function selectWeekdays() {
             document.querySelectorAll('.day-btn').forEach(btn => {
                 const day = parseInt(btn.dataset.day);
@@ -714,6 +816,7 @@
                 else btn.classList.remove('selected');
             });
         }
+
         function selectWeekend() {
             document.querySelectorAll('.day-btn').forEach(btn => {
                 const day = parseInt(btn.dataset.day);
@@ -721,30 +824,50 @@
                 else btn.classList.remove('selected');
             });
         }
-        
+
         function saveSchedule() {
             const valveNum = parseInt(document.getElementById('schedule-valve').value);
-            let startHour = parseInt(document.getElementById('schedule-start-hour').value);
-            let startMin = parseInt(document.getElementById('schedule-start-min').value);
-            let stopHour = parseInt(document.getElementById('schedule-stop-hour').value);
-            let stopMin = parseInt(document.getElementById('schedule-stop-min').value);
+            const startHour = parseInt(document.getElementById('schedule-start-hour').value);
+            const startMin = parseInt(document.getElementById('schedule-start-min').value);
+            const stopHour = parseInt(document.getElementById('schedule-stop-hour').value);
+            const stopMin = parseInt(document.getElementById('schedule-stop-min').value);
             const days = getSelectedDays();
             
             if (isNaN(startHour) || isNaN(startMin) || isNaN(stopHour) || isNaN(stopMin)) {
-                showFeedback('⚠️ กรุณากรอกเวลาให้ครบถ้วน', true); return;
+                showFeedback('⚠️ กรุณากรอกเวลาให้ครบถ้วน', true);
+                return;
             }
+            
+            if (startHour < 0 || startHour > 23 || stopHour < 0 || stopHour > 23 ||
+                startMin < 0 || startMin > 59 || stopMin < 0 || stopMin > 59) {
+                showFeedback('⚠️ เวลาไม่ถูกต้อง (0-23 ชม., 0-59 นาที)', true);
+                return;
+            }
+            
             if (days === 0) {
-                showFeedback('⚠️ กรุณาเลือกวันทำงานอย่างน้อย 1 วัน', true); return;
+                showFeedback('⚠️ กรุณาเลือกวันทำงานอย่างน้อย 1 วัน', true);
+                return;
             }
-            const scheduleData = { valve: valveNum, startHour: startHour, startMin: startMin, stopHour: stopHour, stopMin: stopMin, days: days };
+            
+            const scheduleData = {
+                valve: valveNum,
+                startHour: startHour,
+                startMin: startMin,
+                stopHour: stopHour,
+                stopMin: stopMin,
+                days: days
+            };
+            
             if (client && client.connected) {
                 client.publish(`garden/${current_loc}/schedule/add`, JSON.stringify(scheduleData), { qos: 1 });
                 showFeedback('📅 ส่งข้อมูลตารางเวลาแล้ว ✓');
                 closeModal();
                 setTimeout(() => requestScheduleList(), 800);
-            } else showFeedback('❌ ไม่ได้เชื่อมต่อคลาวด์', true);
+            } else {
+                showFeedback('❌ ไม่ได้เชื่อมต่อคลาวด์', true);
+            }
         }
-        
+
         function deleteSchedule(index) {
             if (confirm('คุณต้องการลบตารางเวลานี้ใช่หรือไม่?')) {
                 if (client && client.connected) {
@@ -754,30 +877,39 @@
                 }
             }
         }
-        
+
         function renderScheduleList() {
             const container = document.getElementById('schedule-list');
             if (!container) return;
+            
             if (!schedules || schedules.length === 0) {
-                container.innerHTML = '<div class="schedule-empty">📅 ยังไม่มีตารางเวลาอัตโนมัติ<br>กดปุ่มด้านบนเพื่อเพิ่มแผนงาน</div>'; return;
+                container.innerHTML = `
+                    <div class="schedule-empty">
+                        📅 ยังไม่มีตารางเวลาอัตโนมัติ<br>
+                        กดปุ่มด้านบนเพื่อเพิ่มแผนงาน
+                    </div>
+                `;
+                return;
             }
+            
             let html = '';
             for (let i = 0; i < schedules.length; i++) {
                 const sch = schedules[i];
-                const timeStr = `${String(sch.startHour).padStart(2,'0')}:${String(sch.startMin).padStart(2,'0')} - ${String(sch.stopHour).padStart(2,'0')}:${String(sch.stopMin).padStart(2,'0')}`;
+                const timeStr = `${String(sch.startHour).padStart(2, '0')}:${String(sch.startMin).padStart(2, '0')} - ${String(sch.stopHour).padStart(2, '0')}:${String(sch.stopMin).padStart(2, '0')}`;
                 const dayStr = getDayString(sch.days);
                 const statusClass = sch.enabled ? 'schedule-active' : 'schedule-inactive';
                 const statusText = sch.active ? '● กำลังรดน้ำ' : (sch.enabled ? '○ เปิดใช้งาน' : '⊘ ปิดใช้งาน');
+                const valveName = location_configs[current_loc].valves[sch.valve - 1] || 'วาล์ว ' + sch.valve;
                 
                 html += `
                     <div class="schedule-item ${sch.enabled ? '' : 'schedule-disabled'}">
                         <div class="schedule-header">
                             <div>
-                                <strong>💧 ${location_configs[current_loc].valves[sch.valve-1] || 'วาล์ว '+sch.valve}</strong>
+                                <strong>💧 ${valveName}</strong>
                                 <span class="schedule-badge ${statusClass}">${statusText}</span>
                             </div>
                             <div class="schedule-actions">
-                                <button class="btn-schedule-delete" onclick="deleteSchedule(${sch.id !== undefined ? sch.id : i})">🗑️ ลบ</button>
+                                <button class="btn-schedule-delete" onclick="deleteSchedule(${i})">🗑️ ลบ</button>
                             </div>
                         </div>
                         <div class="schedule-time">⏰ ${timeStr}</div>
@@ -787,35 +919,44 @@
             }
             container.innerHTML = html;
         }
-        
-        function setupDayButtons() {
-            document.querySelectorAll('.day-btn').forEach(btn => {
-                btn.onclick = function(e) { e.preventDefault(); this.classList.toggle('selected'); };
-            });
-        }
-        window.onclick = function(event) { const modal = document.getElementById('schedule-modal'); if (event.target === modal) closeModal(); }
-        
-        // ========== MQTT Connection Tunnel 443 ==========
+
+        // ========== MQTT Connection ==========
         function connectMQTT() {
-            if (reconnectCount >= 15) {
-                updateConnectionStatus('disconnected', '❌ เชื่อมต่อไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ'); return;
+            if (reconnectCount >= 20) {
+                updateConnectionStatus('disconnected', '❌ เชื่อมต่อไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ');
+                return;
             }
+            
             updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อ MQTT Cloud...');
+            
             const brokerUrl = 'wss://c3bcc6f9f4594da3a628fa89f0e349f8.s1.eu.hivemq.cloud:443/mqtt';
             
             const options = {
                 connectTimeout: 15000,
                 clientId: 'web_multigarden_' + Math.random().toString(36).substr(2, 10),
-                username: 'captain-T', password: 'Teerap@t_NN21',
-                clean: true, reconnectPeriod: 5000, keepalive: 60, protocol: 'wss', path: '/mqtt',
-                subprotocols: ['mqtt'] 
+                username: 'captain-T',
+                password: 'Teerap@t_NN21',
+                clean: true,
+                reconnectPeriod: 5000,
+                keepalive: 60,
+                protocol: 'wss',
+                path: '/mqtt'
             };
             
-            if (client) { try { client.end(true); } catch(e) {} }
+            if (client) {
+                try {
+                    client.end(true);
+                } catch(e) {}
+            }
+            
             client = mqtt.connect(brokerUrl, options);
             
-            let connectionTimer = setTimeout(() => {
-                if (client && !client.connected) { client.end(true); reconnectCount++; connectMQTT(); }
+            const connectionTimer = setTimeout(() => {
+                if (client && !client.connected) {
+                    client.end(true);
+                    reconnectCount++;
+                    connectMQTT();
+                }
             }, 12000);
             
             client.on('connect', () => {
@@ -824,77 +965,139 @@
                 reconnectCount = 0;
                 showFeedback('เชื่อมต่อ Cloud สำเร็จ ✓');
                 
-                // ⭐ ทำการ Subscribe ท่อสัญญานแบบ Wildcard ทั่วถึงทั้ง 2 สถานที่ (+ คือสลับแทนที่ home และ office อัตโนมัติ)
+                // Subscribe to all relevant topics
                 const topics = [
-                    'garden/+/sensor/temperature', 'garden/+/sensor/humidity', 'garden/+/sensor/soil_moisture',
-                    'garden/+/signal', 'garden/+/max_working_time', 'garden/+/valve/+/status', 'garden/+/all_valve/status', 'garden/+/schedule/list',
-                    'garden/+/config/sys_name/status', 'garden/+/config/+/status'
+                    `garden/+/sensor/temperature`,
+                    `garden/+/sensor/humidity`,
+                    `garden/+/sensor/soil_moisture`,
+                    `garden/+/signal`,
+                    `garden/+/max_working_time`,
+                    `garden/+/valve/+/status`,
+                    `garden/+/schedule/list`,
+                    `garden/+/config/sys_name/status`,
+                    `garden/+/config/v1_name/status`,
+                    `garden/+/config/v2_name/status`,
+                    `garden/+/config/v3_name/status`,
+                    `garden/+/config/v4_name/status`
                 ];
-                topics.forEach(topic => client.subscribe(topic, { qos: 0 }));
                 
+                topics.forEach(topic => {
+                    client.subscribe(topic, { qos: 0 });
+                });
+                
+                // Request initial data
                 setTimeout(() => {
-                    for(let i = 1; i <= 4; i++) requestValveStatus(i);
-                    client.publish(`garden/${current_loc}/config/get`, "", { qos: 0 });
-                    requestScheduleList();
-                }, 800);
+                    requestAllData();
+                }, 500);
             });
             
-            client.on('error', (err) => { clearTimeout(connectionTimer); updateConnectionStatus('disconnected', '❌ เชื่อมต่อล้มเหลว'); });
-            client.on('close', () => { updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อใหม่...'); });
+            client.on('error', (err) => {
+                clearTimeout(connectionTimer);
+                updateConnectionStatus('disconnected', '❌ เชื่อมต่อล้มเหลว');
+                console.error('MQTT Error:', err);
+            });
+            
+            client.on('close', () => {
+                updateConnectionStatus('connecting', '🔄 กำลังเชื่อมต่อใหม่...');
+            });
             
             client.on('message', (topic, message) => {
                 const msgStr = message.toString();
-                const parts = topic.split('/'); // แยกองค์ประกอบท่อสัญญานออกเป็นส่วนๆ เช่น ["garden", "home", "sensor", "temperature"]
-                const locContext = parts[1];    // ตรวจสอบสถานที่ต้นทางของข้อมูล ('home' หรือ 'office')
+                const parts = topic.split('/');
                 
-                // ดักรับสัญญาณการเปลี่ยนชื่อของสถานที่นั้นๆ แล้วเซฟเก็บลงแคชโครงสร้าง
+                // Extract location from topic
+                if (parts.length < 3) return;
+                const locContext = parts[1];
+                
+                // Handle config topics
                 if (parts[2] === 'config') {
                     if (parts[3] === 'sys_name' && parts[4] === 'status') {
                         location_configs[locContext].sys_name = msgStr;
                         localStorage.setItem(locContext + '_sys_name', msgStr);
                     } else if (parts[3].endsWith('_name') && parts[4] === 'status') {
-                        let vNum = parseInt(parts[3].substring(1, 2));
-                        location_configs[locContext].valves[vNum-1] = msgStr;
-                        localStorage.setItem(locContext + '_v' + vNum + '_name', msgStr);
+                        const vNum = parseInt(parts[3].substring(1, 2));
+                        if (vNum >= 1 && vNum <= 4) {
+                            location_configs[locContext].valves[vNum - 1] = msgStr;
+                            localStorage.setItem(locContext + '_v' + vNum + '_name', msgStr);
+                        }
                     }
-                    if (locContext === current_loc) renderActiveLocationUI();
+                    
+                    if (locContext === current_loc) {
+                        renderActiveLocationUI();
+                    }
                     return;
                 }
-
-                // ⚠️ คัดกรองข้อมูล: หากข้อมูลที่ส่งมาไม่ใช่ของสถานที่ที่เรากำลังเปิดหน้าจอดูอยู่ ให้ข้ามไปก่อน (ทำงานเบื้องหลัง)
+                
+                // Skip data not for current location
                 if (locContext !== current_loc) return;
-
-                // ประมวลผลแปรข้อมูลลงหน้าจอจุดแสดงผลปัจจุบัน
+                
+                // Process sensor data
                 if (topic.endsWith('sensor/temperature')) {
-                    let temp = parseFloat(msgStr); if (!isNaN(temp)) document.getElementById('temp').innerText = temp.toFixed(1);
+                    const temp = parseFloat(msgStr);
+                    if (!isNaN(temp)) document.getElementById('temp').innerText = temp.toFixed(1);
                 } else if (topic.endsWith('sensor/humidity')) {
-                    let hum = parseFloat(msgStr); if (!isNaN(hum)) document.getElementById('hum').innerText = hum.toFixed(1);
+                    const hum = parseFloat(msgStr);
+                    if (!isNaN(hum)) document.getElementById('hum').innerText = hum.toFixed(1);
                 } else if (topic.endsWith('sensor/soil_moisture')) {
-                    let soilVal = parseInt(msgStr); if (isNaN(soilVal)) soilVal = 0;
-                    let soilPercent = Math.floor((soilVal / 1023) * 100);
-                    soilPercent = Math.min(100, Math.max(0, soilPercent));
-                    document.getElementById('soil').innerHTML = `${soilPercent}% (${soilVal})`;
+                    const soilVal = parseInt(msgStr);
+                    if (!isNaN(soilVal)) {
+                        const soilPercent = Math.min(100, Math.max(0, Math.floor((soilVal / 1023) * 100)));
+                        document.getElementById('soil').innerHTML = `${soilPercent}% (${soilVal})`;
+                    }
                 } else if (topic.endsWith('signal')) {
                     document.getElementById('signal').innerText = msgStr;
                 } else if (topic.endsWith('max_working_time')) {
-                    document.getElementById('max_time').innerText = msgStr; document.getElementById('max_working_minutes').value = msgStr;
-                } else if (topic.includes('valve/1/status')) { updateValveUI('v1-status', msgStr);
-                } else if (topic.includes('valve/2/status')) { updateValveUI('v2-status', msgStr);
-                } else if (topic.includes('valve/3/status')) { updateValveUI('v3-status', msgStr);
-                } else if (topic.includes('valve/4/status')) { updateValveUI('v4-status', msgStr);
-                } else if (topic.endsWith('all_valve/status')) {
-                    for(let i = 1; i <= 4; i++) updateValveUI(`v${i}-status`, msgStr);
+                    document.getElementById('max_time').innerText = msgStr;
+                    document.getElementById('max_working_minutes').value = msgStr;
+                } else if (topic.includes('/valve/1/status')) {
+                    updateValveUI('v1-status', msgStr);
+                } else if (topic.includes('/valve/2/status')) {
+                    updateValveUI('v2-status', msgStr);
+                } else if (topic.includes('/valve/3/status')) {
+                    updateValveUI('v3-status', msgStr);
+                } else if (topic.includes('/valve/4/status')) {
+                    updateValveUI('v4-status', msgStr);
                 } else if (topic.endsWith('schedule/list')) {
                     try {
                         const data = JSON.parse(msgStr);
-                        schedules = Array.isArray(data) ? data : (data.schedules || []); renderScheduleList();
-                    } catch(e) { console.error('Error JSON:', e); }
+                        schedules = Array.isArray(data) ? data : [];
+                        renderScheduleList();
+                    } catch(e) {
+                        console.error('Error parsing schedule list:', e);
+                    }
                 }
             });
         }
 
-        window.addEventListener('load', () => { loadLocalCache(); connectMQTT(); setupDayButtons(); });
-        document.addEventListener('visibilitychange', () => { if (!document.hidden && (!client || !client.connected)) connectMQTT(); });
+        // ========== Event Listeners ==========
+        function setupDayButtons() {
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    this.classList.toggle('selected');
+                });
+            });
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('schedule-modal');
+            if (event.target === modal) closeModal();
+        };
+
+        // Reconnect on visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && (!client || !client.connected)) {
+                connectMQTT();
+            }
+        });
+
+        // ========== Initialize ==========
+        window.addEventListener('load', () => {
+            loadLocalCache();
+            connectMQTT();
+            setupDayButtons();
+        });
     </script>
 </body>
 </html>
