@@ -740,24 +740,41 @@
         }
 
         // ========== MQTT Commands ==========
-        function sendCmd(subTopic, value) {
-            if (client && client.connected) {
-                const fullTopic = 'garden/' + current_loc + '/' + subTopic;
-                client.publish(fullTopic, value, { qos: 1, retain: false });
-                showFeedback('ส่งคำสั่งเรียบร้อย ✓');
+function sendCmd(subTopic, value) {
+    if (client && client.connected) {
+        const fullTopic = 'garden/' + current_loc + '/' + subTopic;
+        client.publish(fullTopic, value, { qos: 1, retain: false }, function(err) {
+            if (err) {
+                showFeedback('❌ ส่งคำสั่งล้มเหลว', true);
             } else {
-                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
+                showFeedback('✅ ส่งคำสั่งเรียบร้อย');
             }
-        }
+        });
+    } else {
+        showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
+    }
+}
 
-        function sendValveCmd(num, state) {
-            if (client && client.connected) {
-                updateValveUI('v' + num + '-status', state);
-                sendCmd('valve/' + num + '/set', state);
+function sendValveCmd(num, state) {
+    if (client && client.connected) {
+        // ✅ อัปเดต UI ทันทีโดยไม่รอ feedback
+        updateValveUI('v' + num + '-status', state);
+        
+        const fullTopic = 'garden/' + current_loc + '/valve/' + num + '/set';
+        // ✅ ใช้ qos: 1 และ retain: false
+        client.publish(fullTopic, state, { qos: 1, retain: false }, function(err) {
+            if (err) {
+                showFeedback('❌ ส่งคำสั่งล้มเหลว', true);
+                // เรียกคืนสถานะ UI ถ้าส่งไม่สำเร็จ
+                requestAllData();
             } else {
-                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
+                showFeedback('✅ ส่งคำสั่งเรียบร้อย');
             }
-        }
+        });
+    } else {
+        showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
+    }
+}
 
         // ========== Configuration Functions ==========
         function setMaxWorkingTime() {
