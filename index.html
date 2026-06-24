@@ -749,6 +749,28 @@
             }
         }
 
+        // ========== Add Location Button Automatically ==========
+        function addLocationButton(loc) {
+            // ตรวจสอบว่ามีปุ่มนี้แล้วหรือยัง
+            const existingBtn = document.getElementById('btn-loc-' + loc);
+            if (existingBtn) return;
+            
+            const switcher = document.querySelector('.location-switcher');
+            if (!switcher) return;
+            
+            // สร้างปุ่มใหม่
+            const btn = document.createElement('button');
+            btn.id = 'btn-loc-' + loc;
+            btn.className = 'loc-tab-btn';
+            btn.onclick = function() { switchLocation(loc); };
+            
+            const displayName = loc.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            btn.innerHTML = `<span class="emoji">📍</span><span class="label">${displayName}</span>`;
+            
+            switcher.appendChild(btn);
+            console.log('✅ เพิ่มปุ่มสำหรับ:', loc);
+        }
+
         // ========== System Event Display ==========
         function showSystemEvent(message, isBoot = false) {
             const eventEl = document.getElementById('system-event');
@@ -1279,6 +1301,27 @@
                 if (parts.length < 3) return;
                 const locContext = parts[1];
                 
+                // ✅ ตรวจสอบและสร้าง location ใหม่ถ้ายังไม่มี
+                if (!location_configs[locContext]) {
+                    console.log('📌 พบ location ใหม่:', locContext, 'กำลังสร้างอัตโนมัติ...');
+                    let displayName = locContext.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    location_configs[locContext] = {
+                        sys_name: "HOMEGUMTEE " + displayName,
+                        emoji: "📍",
+                        valves: ["วาล์ว 1", "วาล์ว 2", "วาล์ว 3", "วาล์ว 4"]
+                    };
+                    // โหลดข้อมูลจาก localStorage ถ้ามี
+                    const savedSysName = localStorage.getItem(locContext + '_sys_name');
+                    if (savedSysName) location_configs[locContext].sys_name = savedSysName;
+                    for (let i = 1; i <= 4; i++) {
+                        const savedValveName = localStorage.getItem(locContext + '_v' + i + '_name');
+                        if (savedValveName) location_configs[locContext].valves[i-1] = savedValveName;
+                    }
+                    
+                    // เพิ่มปุ่มสำหรับ location ใหม่ถ้ายังไม่มี
+                    addLocationButton(locContext);
+                }
+                
                 // ========== System Event ==========
                 if (parts[2] === 'system') {
                     if (parts[3] === 'event' && msgStr.startsWith('BOOT:')) {
@@ -1299,6 +1342,17 @@
                 
                 // ========== Config Topics ==========
                 if (parts[2] === 'config') {
+                    // ตรวจสอบอีกครั้ง (เผื่อกรณี)
+                    if (!location_configs[locContext]) {
+                        let displayName = locContext.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        location_configs[locContext] = {
+                            sys_name: "HOMEGUMTEE " + displayName,
+                            emoji: "📍",
+                            valves: ["วาล์ว 1", "วาล์ว 2", "วาล์ว 3", "วาล์ว 4"]
+                        };
+                        addLocationButton(locContext);
+                    }
+                    
                     if (parts[3] === 'sys_name' && parts[4] === 'status') {
                         location_configs[locContext].sys_name = msgStr;
                         localStorage.setItem(locContext + '_sys_name', msgStr);
