@@ -507,15 +507,15 @@
                 <span class="emoji">🏡</span>
                 <span class="label">สนามหน้าบ้าน</span>
             </button>
-            <button id="btn-loc-side_garden" class="loc-tab-btn" onclick="switchLocation('side_garden')">
+            <button id="btn-loc-home" class="loc-tab-btn" onclick="switchLocation('home')">
                 <span class="emoji">🌿</span>
-                <span class="label">สนามข้างบ้าน</span>
+                <span class="label">สวนข้างบ้าน</span>
             </button>
             <button id="btn-loc-back_garden" class="loc-tab-btn" onclick="switchLocation('back_garden')">
                 <span class="emoji">🌳</span>
                 <span class="label">สวนหลังบ้าน</span>
             </button>
-            <button id="btn-loc-college" class="loc-tab-btn" onclick="switchLocation('college')">
+            <button id="btn-loc-office" class="loc-tab-btn" onclick="switchLocation('office')">
                 <span class="emoji">🏫</span>
                 <span class="label">วิทยาลัย</span>
             </button>
@@ -663,15 +663,17 @@
         let domReady = false;
         let lastEventTime = 0;
         
-        // Location configurations - 4 Systems
+        // ============================================================
+        // Location Configurations - 4 Systems
+        // ============================================================
         let location_configs = {
             front_yard: {
                 sys_name: "HOMEGUMTEE สนามหน้าบ้าน",
                 emoji: "🏡",
                 valves: ["วาล์ว 1 (สนามหน้า)", "วาล์ว 2 (แปลงดอกไม้)", "วาล์ว 3 (ต้นไม้ใหญ่)", "วาล์ว 4 (รั้วต้นไม้)"]
             },
-            side_garden: {
-                sys_name: "HOMEGUMTEE สนามข้างบ้าน",
+            home: {
+                sys_name: "HOMEGUMTEE สวนข้างบ้าน",
                 emoji: "🌿",
                 valves: ["วาล์ว 1 (สวนข้าง)", "วาล์ว 2 (แปลงผัก)", "วาล์ว 3 (ไม้กระถาง)", "วาล์ว 4 (สนามหญ้า)"]
             },
@@ -680,31 +682,24 @@
                 emoji: "🌳",
                 valves: ["วาล์ว 1 (สวนหลัง)", "วาล์ว 2 (แปลงผักสวนครัว)", "วาล์ว 3 (ไม้ผล)", "วาล์ว 4 (สนามเด็กเล่น)"]
             },
-            college: {
+            office: {
                 sys_name: "HOMEGUMTEE วิทยาลัย",
                 emoji: "🏫",
                 valves: ["โซน A (หน้าอาคาร)", "โซน B (ข้างตึก)", "โซน C (แปลงผัก)", "โซน D (สนามหญ้า)"]
             }
         };
 
-        // Location order for display
-        const location_order = ['front_yard', 'side_garden', 'back_garden', 'college'];
+        // Location labels for display
         const location_labels = {
             front_yard: 'สนามหน้าบ้าน',
-            side_garden: 'สนามข้างบ้าน',
+            home: 'สวนข้างบ้าน',
             back_garden: 'สวนหลังบ้าน',
-            college: 'วิทยาลัย'
-        };
-        const location_emojis = {
-            front_yard: '🏡',
-            side_garden: '🌿',
-            back_garden: '🌳',
-            college: '🏫'
+            office: 'วิทยาลัย'
         };
 
         // ========== Initialization Functions ==========
         function loadLocalCache() {
-            location_order.forEach(loc => {
+            Object.keys(location_configs).forEach(loc => {
                 const savedSysName = localStorage.getItem(loc + '_sys_name');
                 if (savedSysName) location_configs[loc].sys_name = savedSysName;
                 
@@ -751,14 +746,12 @@
 
         // ========== Add Location Button Automatically ==========
         function addLocationButton(loc) {
-            // ตรวจสอบว่ามีปุ่มนี้แล้วหรือยัง
             const existingBtn = document.getElementById('btn-loc-' + loc);
             if (existingBtn) return;
             
             const switcher = document.querySelector('.location-switcher');
             if (!switcher) return;
             
-            // สร้างปุ่มใหม่
             const btn = document.createElement('button');
             btn.id = 'btn-loc-' + loc;
             btn.className = 'loc-tab-btn';
