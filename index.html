@@ -29,7 +29,7 @@
             background: rgba(255, 255, 255, 0.2);
             padding: 6px;
             border-radius: 30px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
         }
@@ -73,6 +73,7 @@
             align-items: center;
             gap: 10px;
             font-size: 24px;
+            flex-wrap: wrap;
         }
         h3 { 
             text-align: center; 
@@ -209,6 +210,23 @@
             background: #ffc107; 
             color: #333; 
             animation: pulse 1.5s infinite;
+        }
+        .system-event {
+            background: #e3f2fd;
+            border-left: 4px solid #1976d2;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-size: 13px;
+            display: none;
+        }
+        .system-event.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        .system-event .event-time {
+            color: #666;
+            font-size: 11px;
         }
         .time-control {
             display: flex;
@@ -363,6 +381,10 @@
             85% { opacity: 1; transform: translateX(-50%) translateY(0); }
             100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
         }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .tab-buttons {
             display: flex;
             gap: 10px;
@@ -402,6 +424,23 @@
         .time-input-group input {
             flex: 1;
         }
+        /* Status Indicator Dot */
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-dot.online {
+            background: #28a745;
+        }
+        .status-dot.offline {
+            background: #dc3545;
+        }
+        .status-dot.reboot {
+            background: #ff9800;
+        }
     </style>
 </head>
 <body>
@@ -421,6 +460,12 @@
         
         <div style="text-align: center;">
             <span id="conn-status" class="connection-status connecting">🔄 กำลังเชื่อมต่อ MQTT...</span>
+        </div>
+
+        <!-- System Event Notification -->
+        <div id="system-event" class="system-event">
+            <span id="event-message">🔄 ระบบกำลังรีสตาร์ท...</span>
+            <div class="event-time" id="event-time"></div>
         </div>
         
         <!-- Sensors Card -->
@@ -499,7 +544,7 @@
         </div>
     </div>
     <div class="footer">
-        HOMEGUMTEE Multi-Location Smart Garden System | Real-time SPA Control
+        HOMEGUMTEE Multi-Location Smart Garden System | Real-time SPA Control v2.1
     </div>
 
     <!-- Schedule Modal -->
@@ -547,6 +592,7 @@
         let current_loc = 'home';
         let isRendering = false;
         let domReady = false;
+        let lastEventTime = 0;
         
         // Location configurations with default names
         let location_configs = {
@@ -575,12 +621,10 @@
         }
 
         function renderActiveLocationUI() {
-            // Prevent multiple simultaneous renders
             if (isRendering) return;
             isRendering = true;
             
             try {
-                // Wait for DOM to be ready
                 if (!domReady) {
                     isRendering = false;
                     return;
@@ -588,7 +632,6 @@
                 
                 const config = location_configs[current_loc];
                 if (!config) {
-                    console.warn('Config not found for location:', current_loc);
                     isRendering = false;
                     return;
                 }
@@ -610,18 +653,42 @@
             }
         }
 
+        // ========== System Event Display ==========
+        function showSystemEvent(message, isBoot = false) {
+            const eventEl = document.getElementById('system-event');
+            const msgEl = document.getElementById('event-message');
+            const timeEl = document.getElementById('event-time');
+            
+            if (!eventEl || !msgEl || !timeEl) return;
+            
+            msgEl.textContent = message;
+            const now = new Date();
+            timeEl.textContent = '🕐 ' + now.toLocaleTimeString('th-TH');
+            
+            eventEl.className = 'system-event show';
+            if (isBoot) {
+                eventEl.style.borderLeftColor = '#ff9800';
+            } else {
+                eventEl.style.borderLeftColor = '#1976d2';
+            }
+            
+            // Auto hide after 10 seconds
+            clearTimeout(lastEventTime);
+            lastEventTime = setTimeout(() => {
+                eventEl.classList.remove('show');
+            }, 10000);
+        }
+
         // ========== Location Switching ==========
         function switchLocation(loc) {
             if (current_loc === loc) return;
             current_loc = loc;
             
-            // Update tab buttons
             const homeBtn = document.getElementById('btn-loc-home');
             const officeBtn = document.getElementById('btn-loc-office');
             if (homeBtn) homeBtn.classList.toggle('active', loc === 'home');
             if (officeBtn) officeBtn.classList.toggle('active', loc === 'office');
             
-            // Reset display values
             const tempEl = document.getElementById('temp');
             const humEl = document.getElementById('hum');
             const soilEl = document.getElementById('soil');
@@ -646,7 +713,6 @@
             renderActiveLocationUI();
             showFeedback('สลับไปคุม: ' + location_configs[loc].sys_name + ' ✓');
             
-            // Request data from new location
             if (client && client.connected) {
                 requestAllData();
             }
@@ -655,18 +721,12 @@
         function requestAllData() {
             if (!client || !client.connected) return;
             
-            // Request valve statuses
             for (let i = 1; i <= 4; i++) {
                 client.publish('garden/' + current_loc + '/valve/' + i + '/get', '', { qos: 0 });
             }
             
-            // Request config
             client.publish('garden/' + current_loc + '/config/get', '', { qos: 0 });
-            
-            // Request schedules
             client.publish('garden/' + current_loc + '/schedule/get', '', { qos: 0 });
-            
-            // Request max working time
             client.publish('garden/' + current_loc + '/max_working_time/get', '', { qos: 0 });
         }
 
@@ -740,41 +800,38 @@
         }
 
         // ========== MQTT Commands ==========
-function sendCmd(subTopic, value) {
-    if (client && client.connected) {
-        const fullTopic = 'garden/' + current_loc + '/' + subTopic;
-        client.publish(fullTopic, value, { qos: 1, retain: false }, function(err) {
-            if (err) {
-                showFeedback('❌ ส่งคำสั่งล้มเหลว', true);
+        function sendCmd(subTopic, value) {
+            if (client && client.connected) {
+                const fullTopic = 'garden/' + current_loc + '/' + subTopic;
+                client.publish(fullTopic, value, { qos: 1, retain: false }, function(err) {
+                    if (err) {
+                        showFeedback('❌ ส่งคำสั่งล้มเหลว', true);
+                    } else {
+                        showFeedback('✅ ส่งคำสั่งเรียบร้อย');
+                    }
+                });
             } else {
-                showFeedback('✅ ส่งคำสั่งเรียบร้อย');
+                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
             }
-        });
-    } else {
-        showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
-    }
-}
+        }
 
-function sendValveCmd(num, state) {
-    if (client && client.connected) {
-        // ✅ อัปเดต UI ทันทีโดยไม่รอ feedback
-        updateValveUI('v' + num + '-status', state);
-        
-        const fullTopic = 'garden/' + current_loc + '/valve/' + num + '/set';
-        // ✅ ใช้ qos: 1 และ retain: false
-        client.publish(fullTopic, state, { qos: 1, retain: false }, function(err) {
-            if (err) {
-                showFeedback('❌ ส่งคำสั่งล้มเหลว', true);
-                // เรียกคืนสถานะ UI ถ้าส่งไม่สำเร็จ
-                requestAllData();
+        function sendValveCmd(num, state) {
+            if (client && client.connected) {
+                updateValveUI('v' + num + '-status', state);
+                
+                const fullTopic = 'garden/' + current_loc + '/valve/' + num + '/set';
+                client.publish(fullTopic, state, { qos: 1, retain: false }, function(err) {
+                    if (err) {
+                        showFeedback('❌ ส่งคำสั่งล้มเหลว', true);
+                        requestAllData();
+                    } else {
+                        showFeedback('✅ ส่งคำสั่งเรียบร้อย');
+                    }
+                });
             } else {
-                showFeedback('✅ ส่งคำสั่งเรียบร้อย');
+                showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
             }
-        });
-    } else {
-        showFeedback('❌ ไม่ได้เชื่อมต่อ MQTT', true);
-    }
-}
+        }
 
         // ========== Configuration Functions ==========
         function setMaxWorkingTime() {
@@ -1073,7 +1130,9 @@ function sendValveCmd(num, state) {
                     'garden/+/config/v1_name/status',
                     'garden/+/config/v2_name/status',
                     'garden/+/config/v3_name/status',
-                    'garden/+/config/v4_name/status'
+                    'garden/+/config/v4_name/status',
+                    'garden/+/system/event',
+                    'garden/+/system/status'
                 ];
                 
                 topics.forEach(topic => {
@@ -1122,7 +1181,25 @@ function sendValveCmd(num, state) {
                 if (parts.length < 3) return;
                 const locContext = parts[1];
                 
-                // Handle config topics
+                // ========== System Event ==========
+                if (parts[2] === 'system') {
+                    if (parts[3] === 'event' && msgStr.startsWith('BOOT:')) {
+                        const bootMsg = msgStr.substring(5);
+                        showSystemEvent('🔄 ' + bootMsg, true);
+                        showFeedback('🔄 ระบบกำลังรีสตาร์ท');
+                    }
+                    if (parts[3] === 'status') {
+                        try {
+                            const data = JSON.parse(msgStr);
+                            if (data.status === 'online') {
+                                showSystemEvent('✅ ระบบออนไลน์: ' + data.location + ' (IP: ' + data.ip + ')', false);
+                            }
+                        } catch(e) {}
+                    }
+                    return;
+                }
+                
+                // ========== Config Topics ==========
                 if (parts[2] === 'config') {
                     if (parts[3] === 'sys_name' && parts[4] === 'status') {
                         location_configs[locContext].sys_name = msgStr;
@@ -1218,6 +1295,13 @@ function sendValveCmd(num, state) {
             loadLocalCache();
             connectMQTT();
             setupDayButtons();
+            
+            // Check if there's a system event from URL param
+            const urlParams = new URLSearchParams(window.location.search);
+            const eventMsg = urlParams.get('event');
+            if (eventMsg) {
+                showSystemEvent(eventMsg, true);
+            }
         });
     </script>
 </body>
