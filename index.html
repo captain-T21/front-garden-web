@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>HOMEGUMTEE Web Control - ระบบรดน้ำอัจฉริยะ 2 สถานที่</title>
+    <title>HOMEGUMTEE Web Control - ระบบรดน้ำอัจฉริยะ 4 สถานที่</title>
     <!-- 🔥 ใช้ MQTT.js เวอร์ชัน 4.x ที่เสถียร -->
     <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
     <style>
@@ -25,7 +25,9 @@
             padding-bottom: 30px;
         }
         .location-switcher {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
             background: rgba(255, 255, 255, 0.2);
             padding: 6px;
             border-radius: 30px;
@@ -34,22 +36,30 @@
             backdrop-filter: blur(10px);
         }
         .loc-tab-btn {
-            flex: 1;
             background: none;
             color: rgba(255, 255, 255, 0.8);
-            padding: 12px;
-            font-size: 16px;
+            padding: 10px 6px;
+            font-size: 13px;
             border-radius: 25px;
             margin: 0;
             transition: all 0.3s ease;
             box-shadow: none;
             cursor: pointer;
             border: none;
+            font-weight: bold;
         }
         .loc-tab-btn.active {
             background: white;
             color: #764ba2;
             box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        .loc-tab-btn .emoji {
+            display: block;
+            font-size: 20px;
+        }
+        .loc-tab-btn .label {
+            display: block;
+            font-size: 11px;
         }
         .card { 
             background: white; 
@@ -72,7 +82,7 @@
             justify-content: center;
             align-items: center;
             gap: 10px;
-            font-size: 24px;
+            font-size: 22px;
             flex-wrap: wrap;
         }
         h3 { 
@@ -89,9 +99,17 @@
             align-items: center; 
             padding: 12px 0; 
             border-bottom: 1px solid #eee; 
+            flex-wrap: wrap;
+            gap: 6px;
         }
         .valve-row:last-child { 
             border: none; 
+        }
+        .valve-info {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
         }
         button { 
             padding: 8px 18px; 
@@ -265,6 +283,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 6px;
         }
         .schedule-time {
             font-weight: bold;
@@ -424,7 +444,6 @@
         .time-input-group input {
             flex: 1;
         }
-        /* Status Indicator Dot */
         .status-dot {
             display: inline-block;
             width: 10px;
@@ -441,20 +460,70 @@
         .status-dot.reboot {
             background: #ff9800;
         }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .location-switcher {
+                grid-template-columns: 1fr 1fr;
+                gap: 4px;
+                padding: 4px;
+            }
+            .loc-tab-btn {
+                padding: 8px 4px;
+                font-size: 11px;
+            }
+            .loc-tab-btn .emoji {
+                font-size: 18px;
+            }
+            .loc-tab-btn .label {
+                font-size: 10px;
+            }
+            .valve-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .valve-row > div {
+                display: flex;
+                justify-content: center;
+                gap: 6px;
+            }
+            .valve-info {
+                justify-content: center;
+            }
+        }
+        @media (min-width: 481px) {
+            .location-switcher {
+                grid-template-columns: 1fr 1fr 1fr 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         
-        <!-- Location Switcher -->
+        <!-- Location Switcher - 4 Systems -->
         <div class="location-switcher">
-            <button id="btn-loc-home" class="loc-tab-btn active" onclick="switchLocation('home')">🏡 สวนที่บ้าน</button>
-            <button id="btn-loc-office" class="loc-tab-btn" onclick="switchLocation('office')">🏫 วิทยาลัย</button>
+            <button id="btn-loc-front_yard" class="loc-tab-btn active" onclick="switchLocation('front_yard')">
+                <span class="emoji">🏡</span>
+                <span class="label">สนามหน้าบ้าน</span>
+            </button>
+            <button id="btn-loc-side_garden" class="loc-tab-btn" onclick="switchLocation('side_garden')">
+                <span class="emoji">🌿</span>
+                <span class="label">สนามข้างบ้าน</span>
+            </button>
+            <button id="btn-loc-back_garden" class="loc-tab-btn" onclick="switchLocation('back_garden')">
+                <span class="emoji">🌳</span>
+                <span class="label">สวนหลังบ้าน</span>
+            </button>
+            <button id="btn-loc-college" class="loc-tab-btn" onclick="switchLocation('college')">
+                <span class="emoji">🏫</span>
+                <span class="label">วิทยาลัย</span>
+            </button>
         </div>
 
         <!-- System Title -->
         <h2>
-            <span id="title-sys-name">🌱 HOMEGUMTEE Smart Garden</span>
+            <span id="title-sys-name">🌱 HOMEGUMTEE สนามหน้าบ้าน</span>
             <button class="btn-edit-name" onclick="changeSystemName()" title="เปลี่ยนชื่อระบบ">⚙️</button>
         </h2>
         
@@ -488,7 +557,7 @@
             <!-- Control Tab -->
             <div id="tab-control">
                 <div class="valve-row">
-                    <span>💧 <span id="lbl-v1-name">วาล์ว 1</span>: <span id="v1-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(1)">✏️</button></span>
+                    <span class="valve-info">💧 <span id="lbl-v1-name">วาล์ว 1</span>: <span id="v1-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(1)">✏️</button></span>
                     <div>
                         <button class="btn-on" onclick="sendValveCmd(1, '1')">▶ เปิด</button>
                         <button class="btn-off" onclick="sendValveCmd(1, '0')">⏹ ปิด</button>
@@ -496,7 +565,7 @@
                 </div>
                 
                 <div class="valve-row">
-                    <span>💧 <span id="lbl-v2-name">วาล์ว 2</span>: <span id="v2-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(2)">✏️</button></span>
+                    <span class="valve-info">💧 <span id="lbl-v2-name">วาล์ว 2</span>: <span id="v2-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(2)">✏️</button></span>
                     <div>
                         <button class="btn-on" onclick="sendValveCmd(2, '1')">▶ เปิด</button>
                         <button class="btn-off" onclick="sendValveCmd(2, '0')">⏹ ปิด</button>
@@ -504,7 +573,7 @@
                 </div>
 
                 <div class="valve-row">
-                    <span>💧 <span id="lbl-v3-name">วาล์ว 3</span>: <span id="v3-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(3)">✏️</button></span>
+                    <span class="valve-info">💧 <span id="lbl-v3-name">วาล์ว 3</span>: <span id="v3-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(3)">✏️</button></span>
                     <div>
                         <button class="btn-on" onclick="sendValveCmd(3, '1')">▶ เปิด</button>
                         <button class="btn-off" onclick="sendValveCmd(3, '0')">⏹ ปิด</button>
@@ -512,7 +581,7 @@
                 </div>
 
                 <div class="valve-row">
-                    <span>💧 <span id="lbl-v4-name">วาล์ว 4</span>: <span id="v4-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(4)">✏️</button></span>
+                    <span class="valve-info">💧 <span id="lbl-v4-name">วาล์ว 4</span>: <span id="v4-status" class="status-badge status-off">🔴 ปิด</span><button class="btn-edit-name" onclick="changeValveName(4)">✏️</button></span>
                     <div>
                         <button class="btn-on" onclick="sendValveCmd(4, '1')">▶ เปิด</button>
                         <button class="btn-off" onclick="sendValveCmd(4, '0')">⏹ ปิด</button>
@@ -544,7 +613,7 @@
         </div>
     </div>
     <div class="footer">
-        HOMEGUMTEE Multi-Location Smart Garden System | Real-time SPA Control v2.1
+        HOMEGUMTEE Multi-Location Smart Garden System | 4 สถานที่ | Real-time SPA Control v3.0
     </div>
 
     <!-- Schedule Modal -->
@@ -589,26 +658,53 @@
         let reconnectCount = 0;
         let schedules = [];
         let currentTab = 'control';
-        let current_loc = 'home';
+        let current_loc = 'front_yard';
         let isRendering = false;
         let domReady = false;
         let lastEventTime = 0;
         
-        // Location configurations with default names
+        // Location configurations - 4 Systems
         let location_configs = {
-            home: {
-                sys_name: "HOMEGUMTEE สวนที่บ้าน",
-                valves: ["วาล์ว 1 (สวนหน้า)", "วาล์ว 2 (สวนข้าง)", "วาล์ว 3 (สวนหลัง)", "วาล์ว 4 (สวนดาดฟ้า)"]
+            front_yard: {
+                sys_name: "HOMEGUMTEE สนามหน้าบ้าน",
+                emoji: "🏡",
+                valves: ["วาล์ว 1 (สนามหน้า)", "วาล์ว 2 (แปลงดอกไม้)", "วาล์ว 3 (ต้นไม้ใหญ่)", "วาล์ว 4 (รั้วต้นไม้)"]
             },
-            office: {
+            side_garden: {
+                sys_name: "HOMEGUMTEE สนามข้างบ้าน",
+                emoji: "🌿",
+                valves: ["วาล์ว 1 (สวนข้าง)", "วาล์ว 2 (แปลงผัก)", "วาล์ว 3 (ไม้กระถาง)", "วาล์ว 4 (สนามหญ้า)"]
+            },
+            back_garden: {
+                sys_name: "HOMEGUMTEE สวนหลังบ้าน",
+                emoji: "🌳",
+                valves: ["วาล์ว 1 (สวนหลัง)", "วาล์ว 2 (แปลงผักสวนครัว)", "วาล์ว 3 (ไม้ผล)", "วาล์ว 4 (สนามเด็กเล่น)"]
+            },
+            college: {
                 sys_name: "HOMEGUMTEE วิทยาลัย",
+                emoji: "🏫",
                 valves: ["โซน A (หน้าอาคาร)", "โซน B (ข้างตึก)", "โซน C (แปลงผัก)", "โซน D (สนามหญ้า)"]
             }
         };
 
+        // Location order for display
+        const location_order = ['front_yard', 'side_garden', 'back_garden', 'college'];
+        const location_labels = {
+            front_yard: 'สนามหน้าบ้าน',
+            side_garden: 'สนามข้างบ้าน',
+            back_garden: 'สวนหลังบ้าน',
+            college: 'วิทยาลัย'
+        };
+        const location_emojis = {
+            front_yard: '🏡',
+            side_garden: '🌿',
+            back_garden: '🌳',
+            college: '🏫'
+        };
+
         // ========== Initialization Functions ==========
         function loadLocalCache() {
-            ['home', 'office'].forEach(loc => {
+            location_order.forEach(loc => {
                 const savedSysName = localStorage.getItem(loc + '_sys_name');
                 if (savedSysName) location_configs[loc].sys_name = savedSysName;
                 
@@ -637,7 +733,7 @@
                 }
                 
                 const titleEl = document.getElementById('title-sys-name');
-                if (titleEl) titleEl.innerText = config.sys_name;
+                if (titleEl) titleEl.innerText = config.emoji + ' ' + config.sys_name;
                 
                 for (let i = 1; i <= 4; i++) {
                     const nameEl = document.getElementById('lbl-v' + i + '_name');
@@ -672,7 +768,6 @@
                 eventEl.style.borderLeftColor = '#1976d2';
             }
             
-            // Auto hide after 10 seconds
             clearTimeout(lastEventTime);
             lastEventTime = setTimeout(() => {
                 eventEl.classList.remove('show');
@@ -684,11 +779,12 @@
             if (current_loc === loc) return;
             current_loc = loc;
             
-            const homeBtn = document.getElementById('btn-loc-home');
-            const officeBtn = document.getElementById('btn-loc-office');
-            if (homeBtn) homeBtn.classList.toggle('active', loc === 'home');
-            if (officeBtn) officeBtn.classList.toggle('active', loc === 'office');
+            // Update active button
+            document.querySelectorAll('.loc-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.id === 'btn-loc-' + loc);
+            });
             
+            // Reset sensor values
             const tempEl = document.getElementById('temp');
             const humEl = document.getElementById('hum');
             const soilEl = document.getElementById('soil');
@@ -850,11 +946,12 @@
             const config = location_configs[current_loc];
             if (!config) return;
             
-            const newName = prompt('ระบุชื่อระบบใหม่สำหรับ [' + (current_loc === 'home' ? 'ที่บ้าน' : 'วิทยาลัย') + ']:', config.sys_name);
+            const locLabel = location_labels[current_loc] || current_loc;
+            const newName = prompt('ระบุชื่อระบบใหม่สำหรับ [' + locLabel + ']:', config.sys_name);
             if (newName && newName.trim() !== '' && newName.length < 60) {
                 config.sys_name = newName.trim();
                 const titleEl = document.getElementById('title-sys-name');
-                if (titleEl) titleEl.innerText = config.sys_name;
+                if (titleEl) titleEl.innerText = config.emoji + ' ' + config.sys_name;
                 localStorage.setItem(current_loc + '_sys_name', config.sys_name);
                 if (client && client.connected) {
                     client.publish('garden/' + current_loc + '/config/sys_name/set', config.sys_name, { qos: 1, retain: true });
@@ -867,7 +964,8 @@
             const config = location_configs[current_loc];
             if (!config) return;
             
-            const newName = prompt('ระบุชื่อใหม่สำหรับ วาล์ว ' + num + ' ของ [' + (current_loc === 'home' ? 'ที่บ้าน' : 'วิทยาลัย') + ']:', config.valves[num-1]);
+            const locLabel = location_labels[current_loc] || current_loc;
+            const newName = prompt('ระบุชื่อใหม่สำหรับ วาล์ว ' + num + ' ของ [' + locLabel + ']:', config.valves[num-1]);
             if (newName && newName.trim() !== '' && newName.length < 30) {
                 config.valves[num-1] = newName.trim();
                 const nameEl = document.getElementById('lbl-v' + num + '_name');
